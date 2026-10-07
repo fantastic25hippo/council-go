@@ -32,7 +32,7 @@ func (f *fakeDoer) Do(method, path string, body []byte) (int, []byte, error) {
 
 func TestClient_GetSession(t *testing.T) {
 	fake := &fakeDoer{
-		respBody: []byte(`{"id":"abc","state":"COMPLETED","outputs":{"pullRequest":{"url":"http://github.com/pr/1"}}}`),
+		respBody: []byte(`{"id":"abc","state":"COMPLETED","outputs":[{"pullRequest":{"url":"http://github.com/pr/1"}}]}`),
 	}
 	c := &Client{API: fake}
 
