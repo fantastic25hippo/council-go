@@ -1,8 +1,11 @@
 package local
 
 import (
+	"os/exec"
 	"strings"
+	"sync"
 
+	"github.com/fantastic25hippo/council-go/internal/proc"
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
@@ -14,6 +17,8 @@ type Runner interface {
 // Worker is the implementation of worker.Worker.
 type Worker struct {
 	runner Runner
+	mu     sync.Mutex
+	cmd    *exec.Cmd
 }
 
 // New creates a new Worker.
@@ -83,5 +88,22 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 
 // Cancel cancels the local worker.
 func (w *Worker) Cancel() error {
-	return nil
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	var err error
+	if w.cmd != nil {
+		err = proc.Kill(w.cmd)
+		w.cmd = nil
+	}
+
+	if canceler, ok := w.runner.(interface{ Cancel() error }); ok {
+		if cancelErr := canceler.Cancel(); cancelErr != nil {
+			if err == nil {
+				err = cancelErr
+			}
+		}
+	}
+
+	return err
 }
