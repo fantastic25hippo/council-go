@@ -51,6 +51,9 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 
 	if err != nil {
 		r.Outcome = worker.OutcomeFailed
+		if err == ErrTimeout {
+			r.Outcome = worker.OutcomeTimedOut
+		}
 		r.Report = err.Error()
 		return r
 	}

@@ -90,3 +90,24 @@ func TestGoFilesAtMost200(t *testing.T) {
 		}
 	}
 }
+
+func TestReadmeLinksHowToUse(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := ModuleRoot(wd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "docs/HOW_TO_USE_COUNCIL-GO.md") {
+		t.Fatal("README.md must link docs/HOW_TO_USE_COUNCIL-GO.md")
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "HOW_TO_USE_COUNCIL-GO.md")); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -1,0 +1,36 @@
+[relay]
+worker = "auto"
+check_unpushed = true
+debate_turns_each = 3
+fix_rounds_max = 3
+member_timeout_secs = 300
+worker_timeout_secs = 600
+
+[[members]]
+id = "grok"
+display_name = "Grok"
+driver = "grok-acp"
+cli = "grok"
+model = "grok-4.6"
+effort = "high"
+
+[[members]]
+id = "gemini"
+display_name = "Gemini"
+driver = "agy-stream"
+cli = "agy"
+model = "Gemini 3.8 Flash (High)"
+
+[[workers]]
+id = "local"
+display_name = "local agy"
+driver = "agy-print"
+cli = "agy"
+model = "Gemini 3.8 Flash (Medium)"
+
+[[workers]]
+id = "jules"
+display_name = "Jules"
+driver = "jules-remote"
+cli = "jules"
+model = "Jules"

@@ -47,6 +47,7 @@ A `?` anywhere else is not a question.
 Capabilities() Capabilities
 Start(job Job) Run
 Continue(job Job, answer string) Run
+Cancel() error
 ```
 
 `Run.Report` is advisory. `Run.Question` is set only on `ASKED`. `Run.Evidence` is filled by the relay later. `Run.Raw` is debug data; never parse it to choose the outcome.
