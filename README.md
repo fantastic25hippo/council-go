@@ -14,10 +14,18 @@ See [docs/GUARDRAILS.md](docs/GUARDRAILS.md). Short version:
 - Council never merges to `master`. Jules opens PRs; Sahil reviews and merges.
 - The relay owns the [worker contract](docs/WORKER_CONTRACT.md). Adapters report typed outcomes. Prompts are not the protocol.
 
+## Packages
+
+See [docs/PACKAGES.md](docs/PACKAGES.md) for a summary of the internal structure.
+
 ## Build and test
 
+Binary:
 ```bash
+go build -o bin/council ./cmd/council
 go test ./...
 ```
+
+`cmd/council` currently waits for SIGHUP/TERM/interrupt then cancels the worker. It is not the full meeting loop.
 
 No network in tests. No live Jules API in tests.
