@@ -61,6 +61,7 @@ func TestValidate(t *testing.T) {
 			p: plan.Block{
 				Worker: "local",
 				Repo:   "",
+				Verify: "echo hi",
 			},
 			resolved: "local",
 			caps: worker.Capabilities{
@@ -73,8 +74,45 @@ func TestValidate(t *testing.T) {
 			p: plan.Block{
 				Worker: "local",
 				Change: "what?",
+				Verify: "echo hi",
 			},
 			resolved: "local",
+		},
+		{
+			name: "matching worker, empty Verify",
+			p: plan.Block{
+				Worker: "local",
+				Verify: "  ",
+			},
+			resolved:   "local",
+			wantErrMsg: "VERIFY",
+		},
+		{
+			name: "matching worker, empty Verify NACK",
+			p: plan.Block{
+				Worker: "local",
+				Verify: "",
+			},
+			resolved:   "local",
+			wantErrMsg: "NACK",
+		},
+		{
+			name: "matching worker, Verify echo '",
+			p: plan.Block{
+				Worker: "local",
+				Verify: "echo '",
+			},
+			resolved:   "local",
+			wantErrMsg: "VERIFY",
+		},
+		{
+			name: "matching worker, Verify echo ' NACK",
+			p: plan.Block{
+				Worker: "local",
+				Verify: "echo '",
+			},
+			resolved:   "local",
+			wantErrMsg: "NACK",
 		},
 	}
 
@@ -84,9 +122,10 @@ func TestValidate(t *testing.T) {
 			origWorker := tt.p.Worker
 			origRepo := tt.p.Repo
 			origChange := tt.p.Change
+			origVerify := tt.p.Verify
 
 			err := Validate(tt.p, tt.resolved, tt.caps)
-			if tt.p.Worker != origWorker || tt.p.Repo != origRepo || tt.p.Change != origChange {
+			if tt.p.Worker != origWorker || tt.p.Repo != origRepo || tt.p.Change != origChange || tt.p.Verify != origVerify {
 				t.Errorf("Validate mutated plan block")
 			}
 
