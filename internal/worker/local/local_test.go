@@ -8,6 +8,8 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
+var _ worker.Worker = (*Worker)(nil)
+
 type mockRunner struct {
 	stdout string
 	stderr string
@@ -120,5 +122,12 @@ func TestWorker_Capabilities(t *testing.T) {
 	}
 	if caps.OpensPR {
 		t.Errorf("Expected OpensPR false")
+	}
+}
+
+func TestWorker_Cancel(t *testing.T) {
+	w := New(nil)
+	if err := w.Cancel(); err != nil {
+		t.Errorf("Expected nil error from Cancel, got %v", err)
 	}
 }

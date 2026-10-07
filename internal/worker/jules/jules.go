@@ -69,3 +69,7 @@ func (w *Worker) mapStateToRun() worker.Run {
 
 	return run
 }
+
+func (w *Worker) Cancel() error {
+	return nil
+}

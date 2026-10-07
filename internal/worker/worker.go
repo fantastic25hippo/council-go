@@ -6,4 +6,5 @@ type Worker interface {
 	Capabilities() Capabilities
 	Start(job Job) Run
 	Continue(job Job, answer string) Run
+	Cancel() error
 }

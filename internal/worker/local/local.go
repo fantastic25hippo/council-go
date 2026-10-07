@@ -80,3 +80,8 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 	job.Text = base + "\n\nANSWER:" + answer
 	return w.Start(job)
 }
+
+// Cancel cancels the local worker.
+func (w *Worker) Cancel() error {
+	return nil
+}
