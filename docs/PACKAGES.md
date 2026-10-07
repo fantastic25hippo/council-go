@@ -1,18 +1,19 @@
 # Packages
 
-- `internal/worker`: Defines the core worker capabilities, outcome types, and generic interfaces.
-- `local`: Provides an adapter for local execution, such as running commands via shell.
-- `jules`: Provides an adapter to interface with Jules's API and dispatch messages.
-- `plan`: Manages code changes and override behaviors during execution.
-- `route`: Validates payload formats and resolves structural requirements.
-- `dispatch`: Handles task delivery to specific handlers based on action types.
-- `state`: Represents meeting phases and execution state transitions.
-- `evidence`: Collects and scopes data like diffs, test results, or git history.
-- `verify`: Checks evidence items against constraints to ensure safety and completeness.
-- `config`: Handles environment settings and startup prerequisites for the system.
-- `gate`: Provides access control and concurrency boundaries for resources.
-- `prompt`: Centralizes structural rules and text building.
-- `proc`: Spawns and manages OS-level subprocesses securely.
-- `relay`: Wires components together and coordinates proposals until agreement.
-- `check`: Provides utilities for standardizing assertions and constraints.
-- `cmd/council`: Contains the entry point for the static binary, managing signals and worker lifecycle.
+- `internal/worker`: Relay-owned contract: capabilities, typed outcomes, `Start` / `Continue` / `Cancel`.
+- `internal/worker/local`: Local adapter. ASKED only on a final `COUNCIL-QUESTION:` line. `Cancel` kills the process group.
+- `internal/worker/jules`: Jules adapter. ASKED from session state `AWAITING_USER_FEEDBACK`. HTTP via an injected `Doer`.
+- `internal/plan`: Plan block and `WORKER-OVERRIDE` parse. Distinct overrides are an error.
+- `internal/route`: Resolve the worker before planning. `Validate` NACKs a wrong WORKER, empty REPO for GitHub workers, or bad VERIFY.
+- `internal/dispatch`: `Handle(run)` maps `Outcome` to the next relay action. Report text is not consulted.
+- `internal/state`: Meeting phases including `WORKER_RUNNING`, `WORKER_ASKED`, `FIXING`. Stores the active run handle.
+- `internal/evidence`: Relay-collected diff and verify output. Local git diff; Jules via `gh pr diff` / `checks`.
+- `internal/verify`: Wrap VERIFY once with GNU `timeout`. `CheckSyntax` is `bash -n`. `Run` executes in a directory.
+- `internal/config`: Strip `XAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY` from environments.
+- `internal/gate`: Protected-path overlap and GitHub dirty/unpushed checks.
+- `internal/prompt`: Separate `LocalJob`, `JulesJob`, and `VerifyReview` text. No python/timeout policing.
+- `internal/proc`: Start a process group (`Setpgid`) and SIGKILL the group.
+- `internal/relay`: `OnAgreed`, `OnRun`, `OnSIGHUP`. Wires state, dispatch, validate, and Cancel.
+- `internal/check`: Every `.go` file is at most 200 lines.
+- `internal/meeting`: Compose override parse, resolve, validate, and gates before a worker starts.
+- `cmd/council`: Binary stub. Waits for SIGHUP/TERM/interrupt, then cancels the worker. Not the full meeting loop.
