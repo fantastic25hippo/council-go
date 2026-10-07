@@ -15,5 +15,11 @@
 - `internal/proc`: Start a process group (`Setpgid`) and SIGKILL the group.
 - `internal/relay`: `OnAgreed`, `OnRun`, `OnSIGHUP`. Wires state, dispatch, validate, and Cancel.
 - `internal/check`: Every `.go` file is at most 200 lines.
-- `internal/meeting`: Compose override parse, resolve, validate, and gates before a worker starts.
-- `cmd/council`: Binary stub. Waits for SIGHUP/TERM/interrupt, then cancels the worker. Not the full meeting loop.
+- `internal/meeting`: Meeting loop (hi, greet, discuss, dual AGREED, Prepare, worker, independent VERIFY) plus Prepare checks.
+- `internal/member`: Live member interface. Fake for tests. `grok-acp` and `agy-stream` adapters.
+- `internal/cfg`: Slim `council.toml` load. Missing file uses defaults.
+- `internal/term`: Labeled print and Sahil prompt.
+- `internal/extract`: `IsAgreed`, `ParsePlan`, `ParseLaunch`, `ParseVerdict`. Last-line AGREED only.
+- `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed.
+- `internal/boot`: Wire config, members, and workers for `cmd/council`.
+- `cmd/council`: Starts the meeting in the current directory. SIGHUP/TERM/interrupt cancels the worker.

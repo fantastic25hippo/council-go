@@ -7,6 +7,7 @@ type Job struct {
 	Text   string
 	Paths  []string
 	Verify string
+	Repo   string
 }
 
 // Evidence is collected by the relay on DONE. Phase 1 leaves it empty.

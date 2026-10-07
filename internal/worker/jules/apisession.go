@@ -35,6 +35,10 @@ func (s *APISession) LastAgentMessage() string {
 	return s.info.Message
 }
 
+func (s *APISession) SetMessage(m string) {
+	s.info.Message = m
+}
+
 // ID returns the session ID.
 func (s *APISession) ID() string {
 	return s.SID

@@ -13,6 +13,7 @@ type Session interface {
 
 type Worker struct {
 	sess Session
+	live *Live
 }
 
 func New(sess Session) *Worker {
@@ -30,6 +31,12 @@ func (w *Worker) Capabilities() worker.Capabilities {
 }
 
 func (w *Worker) Start(job worker.Job) worker.Run {
+	if w.live != nil {
+		if err := w.live.start(job); err != nil {
+			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
+		}
+		w.sess = w.live.session()
+	}
 	return w.mapStateToRun()
 }
 
@@ -37,10 +44,19 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 	if recorder, ok := w.sess.(interface{ Record(string) }); ok {
 		recorder.Record(answer)
 	}
+	if w.live != nil {
+		if err := w.live.answer(answer); err != nil {
+			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
+		}
+		w.sess = w.live.session()
+	}
 	return w.mapStateToRun()
 }
 
 func (w *Worker) mapStateToRun() worker.Run {
+	if w.sess == nil {
+		return worker.Run{Outcome: worker.OutcomeFailed, Report: "no session"}
+	}
 	state := w.sess.State()
 	msg := w.sess.LastAgentMessage()
 
