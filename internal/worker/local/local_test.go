@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fantastic25hippo/council-go/internal/proc"
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
@@ -129,5 +130,54 @@ func TestWorker_Cancel(t *testing.T) {
 	w := New(nil)
 	if err := w.Cancel(); err != nil {
 		t.Errorf("Expected nil error from Cancel, got %v", err)
+	}
+}
+
+type cancelRunner struct {
+	mockRunner
+	cancelCalled bool
+	cancelErr    error
+}
+
+func (c *cancelRunner) Cancel() error {
+	c.cancelCalled = true
+	return c.cancelErr
+}
+
+func TestWorker_Cancel_CallsRunner(t *testing.T) {
+	runner := &cancelRunner{
+		cancelErr: errors.New("runner cancel err"),
+	}
+	w := New(runner)
+	err := w.Cancel()
+	if !runner.cancelCalled {
+		t.Errorf("Expected runner Cancel to be called")
+	}
+	if err == nil || err.Error() != "runner cancel err" {
+		t.Errorf("Expected err 'runner cancel err', got %v", err)
+	}
+}
+
+func TestWorker_Cancel_KillsCmd(t *testing.T) {
+	cmd, err := proc.Start([]string{"sleep", "30"}, ".")
+	if err != nil {
+		t.Fatalf("Failed to start process: %v", err)
+	}
+
+	w := New(nil)
+	w.cmd = cmd
+
+	if err := w.Cancel(); err != nil {
+		t.Errorf("Expected nil error from Cancel, got %v", err)
+	}
+
+	if w.cmd != nil {
+		t.Errorf("Expected w.cmd to be nil after Cancel")
+	}
+
+	// Ensure the process is dead
+	err = cmd.Wait()
+	if err == nil {
+		t.Errorf("Expected error from Wait (process killed), got nil")
 	}
 }
