@@ -7,6 +7,8 @@ type Fake struct {
 	Next       Run
 	Starts     int
 	Continues  int
+	Cancels    int
+	CancelErr  error
 	LastJob    Job
 	LastAnswer string
 }
@@ -26,4 +28,9 @@ func (f *Fake) Continue(job Job, answer string) Run {
 	f.LastJob = job
 	f.LastAnswer = answer
 	return f.Next
+}
+
+func (f *Fake) Cancel() error {
+	f.Cancels++
+	return f.CancelErr
 }

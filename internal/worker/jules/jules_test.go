@@ -7,6 +7,8 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
+var _ worker.Worker = (*Worker)(nil)
+
 type fakeSession struct {
 	state   string
 	msg     string
@@ -145,5 +147,12 @@ func TestWorker_Continue(t *testing.T) {
 
 	if len(sess.answers) != 1 || sess.answers[0] != "my answer" {
 		t.Errorf("expected recorded answer 'my answer', got %v", sess.answers)
+	}
+}
+
+func TestWorker_Cancel(t *testing.T) {
+	w := New(&fakeSession{})
+	if err := w.Cancel(); err != nil {
+		t.Errorf("expected nil error from Cancel, got %v", err)
 	}
 }
