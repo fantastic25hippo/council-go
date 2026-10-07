@@ -25,8 +25,8 @@ type sessionJSON struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	State   string `json:"state"`
-	Outputs struct {
-		PullRequest struct {
+	Outputs []struct {
+		PullRequest *struct {
 			URL string `json:"url"`
 		} `json:"pullRequest"`
 	} `json:"outputs"`
@@ -52,7 +52,12 @@ func (c *Client) GetSession(id string) (SessionInfo, error) {
 
 	info := SessionInfo{
 		State: parsed.State,
-		PRURL: parsed.Outputs.PullRequest.URL,
+	}
+	for _, out := range parsed.Outputs {
+		if out.PullRequest != nil && out.PullRequest.URL != "" {
+			info.PRURL = out.PullRequest.URL
+			break
+		}
 	}
 	if parsed.ID != "" {
 		info.ID = parsed.ID
