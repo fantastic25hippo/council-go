@@ -7,7 +7,6 @@ import (
 
 	"github.com/fantastic25hippo/council-go/internal/dispatch"
 	"github.com/fantastic25hippo/council-go/internal/evidence"
-	"github.com/fantastic25hippo/council-go/internal/extract"
 	"github.com/fantastic25hippo/council-go/internal/gitstat"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
@@ -51,7 +50,7 @@ func (s *Session) work(ctx context.Context) error {
 			return nil
 		}
 	}
-	id, err := Prepare(s.Task, s.Plan, s.Cfg.Worker, originGitHub(s.Cwd), capsFor(s.Plan.Worker), dirty, unpushed)
+	id, err := Prepare(s.Plan, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
 	if err != nil {
 		s.sys("Plan NACK: " + err.Error())
 		s.Council.Phase = state.PhaseAdjourn
@@ -79,43 +78,9 @@ func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job
 	act := s.Relay.OnRun(run)
 	switch act {
 	case dispatch.ActionAskSahil:
-		if s.Council.FixRounds >= s.Cfg.FixRoundsMax {
-			s.sys("Fix round cap reached. Adjourning.")
-			s.Council.Phase = state.PhaseAdjourn
-			return nil
-		}
-		s.Council.SetFixing() // Count against cap
-		s.Council.Phase = state.PhaseWorkerAsked
-		s.sys("Worker asked: " + run.Question)
-
-		pq := prompt.WorkerQuestion(run.Question)
-		ra, rb, err := sendBoth(ctx, s.A, s.B, pq, pq)
-		if err != nil {
-			return err
-		}
-
-		aa, oka := extract.ParseAnswer(ra)
-		ab, okb := extract.ParseAnswer(rb)
-
-		if oka && okb && aa != "" && aa == ab {
-			return s.handleRun(ctx, w, job, w.Continue(job, aa))
-		}
-
-		s.say(s.A, ra)
-		s.say(s.B, rb)
-
-		ans, err := s.readSahil(ctx, "Sahil> ")
-		if err != nil {
-			return err
-		}
-		if q := strings.ToLower(strings.TrimSpace(ans)); q == "quit" || q == "exit" {
-			s.Council.Phase = state.PhaseAdjourn
-			return nil
-		}
-		return s.handleRun(ctx, w, job, w.Continue(job, ans))
+		return s.handleAsk(ctx, w, job, run)
 	case dispatch.ActionFix:
-		s.sys("Worker failed.")
-		return s.review(ctx, w, job, run)
+		return s.handleFail(ctx, w, job, run)
 	case dispatch.ActionCleanup:
 		s.sys("Worker cancelled.")
 		s.Council.Phase = state.PhaseAdjourn
@@ -130,6 +95,26 @@ func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job
 }
 
 func (s *Session) collect(run worker.Run) worker.Evidence {
+	if run.Raw.PRURL != "" {
+		gh := s.GH
+		if gh == nil {
+			gh = evidence.DefaultGHRunner()
+		}
+		diff, _ := evidence.PRDiff(gh, run.Raw.PRURL)
+		out, err := evidence.PRChecks(gh, run.Raw.PRURL)
+		if err != nil && out == "" {
+			out = err.Error()
+		}
+		exit := 0
+		if err != nil {
+			exit = 1
+		}
+		if diff == "" {
+			diff = run.Report
+		}
+		return evidence.Bundle(diff, out, exit)
+	}
+
 	diff, _ := evidence.LocalDiff(s.Cwd, s.Plan.OwnedPaths)
 	secs := int(s.Cfg.WorkerTimeout.Seconds())
 	if secs <= 0 {

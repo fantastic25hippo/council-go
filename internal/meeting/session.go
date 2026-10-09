@@ -2,6 +2,7 @@ package meeting
 
 import (
 	"github.com/fantastic25hippo/council-go/internal/cfg"
+	"github.com/fantastic25hippo/council-go/internal/evidence"
 	"github.com/fantastic25hippo/council-go/internal/member"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/relay"
@@ -19,10 +20,12 @@ type Session struct {
 	Relay     *relay.Relay
 	WorkerFor func(id string) worker.Worker
 	Cwd       string
+	GH        evidence.GHRunner
 
-	Task     string
-	Plan     plan.Block
-	PlanText string
+	Task           string
+	ResolvedWorker string
+	Plan           plan.Block
+	PlanText       string
 }
 
 func (s *Session) workerIDs() []string {

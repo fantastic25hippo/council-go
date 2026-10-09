@@ -41,6 +41,9 @@ func (s *Session) review(ctx context.Context, w worker.Worker, job worker.Job, r
 	s.sys("Starting a fix round.")
 	fix := job
 	fix.Text = job.Text + "\n\nFIX:\n" + va + "\n" + vb
+	if w.Capabilities().KeepsMemoryAcrossFixes {
+		return s.handleRun(ctx, w, fix, w.Continue(job, fix.Text))
+	}
 	return s.handleRun(ctx, w, fix, w.Start(fix))
 }
 

@@ -3,6 +3,8 @@ package prompt
 import (
 	"fmt"
 	"strings"
+
+	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
 func System(name, other string, debateTurns, fixMax int, workerIDs []string) string {
@@ -29,9 +31,11 @@ func Greet(name, other string) string {
 	return fmt.Sprintf("Please briefly greet Sahil and %s in one or two sentences. Introduce yourself as %s. Do not start proposing or debating yet.", other, name)
 }
 
-func Proposal(task string, workerIDs []string) string {
+func Proposal(task string, workerIDs []string, resolved string, caps worker.Capabilities) string {
 	ids := strings.Join(workerIDs, ", ")
-	return fmt.Sprintf("Task from Sahil:\n%s\n\nPlease provide your independent initial proposal. Do not debate yet.\nAvailable workers: %s.\nIf proposing a full plan, use the required plan block ending with AGREED.", task, ids)
+	capsText := fmt.Sprintf("CanAskAndWait: %v. ReachesGitHub: %v. OpensPR: %v. TouchesLocalCheckout: %v. KeepsMemoryAcrossFixes: %v.",
+		caps.CanAskAndWait, caps.ReachesGitHub, caps.OpensPR, caps.TouchesLocalCheckout, caps.KeepsMemoryAcrossFixes)
+	return fmt.Sprintf("Task from Sahil:\n%s\n\nPlease provide your independent initial proposal. Do not debate yet.\nAvailable workers: %s.\nThis task will be run by %s. %s\nIf proposing a full plan, use the required plan block ending with AGREED.", task, ids, resolved, capsText)
 }
 
 func Debate(other, message string) string {
@@ -74,6 +78,10 @@ Reply with exactly one line VERDICT: PASS or VERDICT: FAIL, then at most five sh
 
 func WorkerQuestion(question string) string {
 	return fmt.Sprintf("The worker asked this question:\n%s\n\nReply with one line ANSWER: <text> if you have a decision, otherwise say you disagree.", question)
+}
+
+func WorkerFailed(report string) string {
+	return fmt.Sprintf("Worker failed/timed out. Report:\n%s\n\nReply ending with exactly one line: FIX to start a fix round, or ESCALATE to send to Sahil.", report)
 }
 
 func Interject(text string) string {

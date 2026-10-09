@@ -8,6 +8,16 @@ import (
 )
 
 func TestStateCleanRepo(t *testing.T) {
+	// Skip real fetch in tests by overriding the fetcher.
+	origFetcher := Fetcher
+	defer func() { Fetcher = origFetcher }()
+
+	fetchCalled := false
+	Fetcher = func(d string) error {
+		fetchCalled = true
+		return nil
+	}
+
 	dir := t.TempDir()
 	run := func(args ...string) {
 		t.Helper()
@@ -34,5 +44,8 @@ func TestStateCleanRepo(t *testing.T) {
 	}
 	if !unpushed {
 		t.Fatal("no upstream should be unpushed")
+	}
+	if !fetchCalled {
+		t.Fatal("fetcher was not called")
 	}
 }

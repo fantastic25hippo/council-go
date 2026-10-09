@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fantastic25hippo/council-go/internal/extract"
-	"github.com/fantastic25hippo/council-go/internal/member"
+	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
+	"github.com/fantastic25hippo/council-go/internal/route"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
 
@@ -32,6 +32,21 @@ func (s *Session) waitTask(ctx context.Context) error {
 				continue
 			}
 			s.Task = strings.Join(lines, "\n")
+			override, err := plan.ParseOverride(s.Task)
+			if err != nil {
+				s.sys(fmt.Sprintf("override parse error: %v", err))
+				s.Task = ""
+				lines = nil
+				continue
+			}
+			resolved, err := route.Resolve(override, s.Cfg.Worker, originGitHub(s.Cwd))
+			if err != nil {
+				s.sys(fmt.Sprintf("worker resolve error: %v", err))
+				s.Task = ""
+				lines = nil
+				continue
+			}
+			s.ResolvedWorker = resolved
 			return nil
 		}
 		lines = append(lines, line)
@@ -41,8 +56,9 @@ func (s *Session) waitTask(ctx context.Context) error {
 func (s *Session) discuss(ctx context.Context) error {
 	s.Council.Phase = state.PhaseDiscuss
 	ids := s.workerIDs()
-	pa := prompt.Proposal(s.Task, ids)
-	pb := prompt.Proposal(s.Task, ids)
+	caps := capsFor(s.ResolvedWorker)
+	pa := prompt.Proposal(s.Task, ids, s.ResolvedWorker, caps)
+	pb := prompt.Proposal(s.Task, ids, s.ResolvedWorker, caps)
 	ra, rb, err := sendBoth(ctx, s.A, s.B, pa, pb)
 	if err != nil {
 		return err
@@ -115,50 +131,4 @@ func (s *Session) discuss(ctx context.Context) error {
 	s.sys("Still no dual AGREED. Adjourning.")
 	s.Council.Phase = state.PhaseAdjourn
 	return nil
-}
-
-func (s *Session) tryAgree(ctx context.Context, first member.Member, text string, second member.Member) (bool, error) {
-	if !extract.IsAgreed(text) {
-		return false, nil
-	}
-	p, ok := extract.ParsePlan(text)
-	if !ok {
-		nack, err := first.Send(prompt.NackPlan(s.workerIDs()))
-		if err != nil {
-			return false, err
-		}
-		s.say(first, nack)
-		if !extract.IsAgreed(nack) {
-			return false, nil
-		}
-		p, ok = extract.ParsePlan(nack)
-		if !ok {
-			return false, nil
-		}
-		text = nack
-	}
-	s.Plan = p
-	s.PlanText = text
-	s.Council.Phase = state.PhaseWaitAgreed
-	conf, err := second.Send(prompt.Confirm(first.DisplayName(), text, p.Worker))
-	if err != nil {
-		return false, err
-	}
-	s.say(second, conf)
-	if !extract.IsAgreed(conf) {
-		return false, nil
-	}
-	launch := extract.ParseLaunch(conf)
-	if launch != p.Worker {
-		ln, err := second.Send(prompt.LaunchNack(p.Worker))
-		if err != nil {
-			return false, err
-		}
-		s.say(second, ln)
-		if !extract.IsAgreed(ln) || extract.ParseLaunch(ln) != p.Worker {
-			return false, nil
-		}
-	}
-	s.sys("Dual AGREED.")
-	return true, nil
 }

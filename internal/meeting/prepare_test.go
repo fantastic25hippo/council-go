@@ -10,20 +10,7 @@ import (
 )
 
 func TestPrepare(t *testing.T) {
-	t.Run("conflicting WORKER-OVERRIDE errors, no worker id", func(t *testing.T) {
-		task := "WORKER-OVERRIDE: local\nWORKER-OVERRIDE: jules\n"
-		var p plan.Block
-		id, err := meeting.Prepare(task, p, "local", false, worker.Capabilities{}, false, false)
-		if err == nil {
-			t.Fatal("expected error for conflicting overrides")
-		}
-		if id != "" {
-			t.Fatalf("expected empty worker id, got %q", id)
-		}
-	})
-
-	t.Run("Prepare with override local, matching plan, local caps, empty repo, Verify `echo hi`, dirty false", func(t *testing.T) {
-		task := "WORKER-OVERRIDE: local"
+	t.Run("Prepare with matching plan, local caps, empty repo, Verify `echo hi`, dirty false", func(t *testing.T) {
 		p := plan.Block{
 			Worker: "local",
 			Verify: "echo hi",
@@ -31,7 +18,7 @@ func TestPrepare(t *testing.T) {
 		caps := worker.Capabilities{
 			TouchesLocalCheckout: true,
 		}
-		id, err := meeting.Prepare(task, p, "local", false, caps, false, false)
+		id, err := meeting.Prepare(p, "local", caps, false, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -41,7 +28,6 @@ func TestPrepare(t *testing.T) {
 	})
 
 	t.Run("GitHub caps, unpushed true", func(t *testing.T) {
-		task := ""
 		p := plan.Block{
 			Worker: "jules",
 			Verify: "echo hi",
@@ -50,7 +36,7 @@ func TestPrepare(t *testing.T) {
 		caps := worker.Capabilities{
 			ReachesGitHub: true,
 		}
-		id, err := meeting.Prepare(task, p, "jules", false, caps, false, true)
+		id, err := meeting.Prepare(p, "jules", caps, false, true)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -63,7 +49,6 @@ func TestPrepare(t *testing.T) {
 	})
 
 	t.Run("Protected owned path hook.log", func(t *testing.T) {
-		task := ""
 		p := plan.Block{
 			Worker:     "local",
 			Verify:     "echo hi",
@@ -72,7 +57,7 @@ func TestPrepare(t *testing.T) {
 		caps := worker.Capabilities{
 			TouchesLocalCheckout: true,
 		}
-		id, err := meeting.Prepare(task, p, "local", false, caps, false, false)
+		id, err := meeting.Prepare(p, "local", caps, false, false)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -85,7 +70,6 @@ func TestPrepare(t *testing.T) {
 	})
 
 	t.Run("Validate mismatch WORKER", func(t *testing.T) {
-		task := ""
 		p := plan.Block{
 			Worker: "jules",
 			Verify: "echo hi",
@@ -93,7 +77,7 @@ func TestPrepare(t *testing.T) {
 		caps := worker.Capabilities{
 			TouchesLocalCheckout: true,
 		}
-		id, err := meeting.Prepare(task, p, "local", false, caps, false, false)
+		id, err := meeting.Prepare(p, "local", caps, false, false)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -106,7 +90,6 @@ func TestPrepare(t *testing.T) {
 	})
 
 	t.Run("p is not mutated", func(t *testing.T) {
-		task := ""
 		p := plan.Block{
 			Worker:     "local",
 			Verify:     "echo hi",
@@ -120,7 +103,7 @@ func TestPrepare(t *testing.T) {
 		caps := worker.Capabilities{
 			TouchesLocalCheckout: true,
 		}
-		meeting.Prepare(task, p, "local", false, caps, false, false)
+		meeting.Prepare(p, "local", caps, false, false)
 
 		if p.Worker != pCopy.Worker || p.Verify != pCopy.Verify || len(p.OwnedPaths) != len(pCopy.OwnedPaths) {
 			t.Fatalf("p was mutated")

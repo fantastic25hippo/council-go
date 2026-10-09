@@ -1,6 +1,9 @@
 package jules
 
 import (
+	"context"
+	"errors"
+
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
@@ -33,6 +36,9 @@ func (w *Worker) Capabilities() worker.Capabilities {
 func (w *Worker) Start(job worker.Job) worker.Run {
 	if w.live != nil {
 		if err := w.live.start(job); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return worker.Run{Outcome: worker.OutcomeCancelled, Report: "cancelled"}
+			}
 			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
 		}
 		w.sess = w.live.session()
@@ -46,6 +52,9 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 	}
 	if w.live != nil {
 		if err := w.live.answer(answer); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return worker.Run{Outcome: worker.OutcomeCancelled, Report: "cancelled"}
+			}
 			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
 		}
 		w.sess = w.live.session()
@@ -87,5 +96,8 @@ func (w *Worker) mapStateToRun() worker.Run {
 }
 
 func (w *Worker) Cancel() error {
+	if w.live != nil && w.live.cancel != nil {
+		w.live.cancel()
+	}
 	return nil
 }

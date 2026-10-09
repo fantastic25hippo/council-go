@@ -1,6 +1,7 @@
 package jules
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ type Live struct {
 	Repo     string
 	sess     *APISession
 	approved bool
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func NewLive(c *Client, timeout time.Duration) *Worker {
@@ -43,6 +46,7 @@ func (l *Live) start(job worker.Job) error {
 	if job.Repo == "" {
 		return errors.New("empty REPO")
 	}
+	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.Repo = job.Repo
 	branch := l.Branch
 	if branch == "" {
@@ -61,6 +65,7 @@ func (l *Live) answer(text string) error {
 	if l.sess == nil || l.sess.SID == "" {
 		return errors.New("empty session id")
 	}
+	l.ctx, l.cancel = context.WithCancel(context.Background())
 	if err := l.Client.Send(l.sess.SID, text); err != nil {
 		return err
 	}
@@ -95,6 +100,10 @@ func (l *Live) poll() error {
 	var lastState string
 
 	for nowFn().Before(deadline) {
+		if l.ctx != nil && l.ctx.Err() != nil {
+			return context.Canceled
+		}
+
 		now := nowFn()
 
 		if err := l.sess.Refresh(); err != nil {
@@ -147,7 +156,11 @@ func (l *Live) poll() error {
 			}
 		}
 
-		sleep(interval)
+		select {
+		case <-time.After(interval):
+		case <-l.ctx.Done():
+			return context.Canceled
+		}
 	}
 	return errors.New("jules poll timed out")
 }

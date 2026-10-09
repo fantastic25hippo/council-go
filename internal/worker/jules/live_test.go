@@ -108,3 +108,32 @@ func TestLiveIdleNudge(t *testing.T) {
 		t.Fatalf("not all api calls made, expected %d, got %d", len(api.calls), api.i)
 	}
 }
+
+func TestLiveCancel(t *testing.T) {
+	api := &seqDoer{calls: []struct {
+		method, path string
+		status       int
+		body         []byte
+	}{
+		{method: "POST", path: "/sessions", body: []byte(`{"id":"s1"}`)},
+		{method: "GET", path: "/sessions/s1", body: []byte(`{"id":"s1","state":"IN_PROGRESS"}`)},
+		{method: "GET", path: "/sessions/s1/activities", body: []byte(`{}`)},
+	}}
+	w := NewLive(&Client{API: api}, time.Hour)
+	w.live.Sleep = func(time.Duration) {}
+	w.live.Interval = time.Hour
+
+	errC := make(chan worker.Run)
+	go func() {
+		errC <- w.Start(worker.Job{Repo: "o/r", Text: "do it"})
+	}()
+
+	// Wait a bit to ensure it started polling
+	time.Sleep(10 * time.Millisecond)
+	_ = w.Cancel()
+
+	run := <-errC
+	if run.Outcome != worker.OutcomeCancelled {
+		t.Fatalf("expected cancelled outcome, got %v", run.Outcome)
+	}
+}

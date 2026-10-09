@@ -5,9 +5,17 @@ import (
 	"strings"
 )
 
+var Fetcher = func(dir string) error {
+	_, err := git(dir, "fetch", "--quiet")
+	return err
+}
+
 // State reports dirty tracked files and unpushed commits. Fail-closed: error
 // if git cannot answer.
 func State(dir string) (dirty, unpushed bool, err error) {
+	if err := Fetcher(dir); err != nil {
+		return false, false, err
+	}
 	status, err := git(dir, "status", "--porcelain")
 	if err != nil {
 		return false, false, err
