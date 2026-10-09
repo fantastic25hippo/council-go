@@ -30,6 +30,7 @@ func NewLive(c *Client, timeout time.Duration) *Worker {
 		Timeout:  timeout,
 		Interval: 5 * time.Second,
 		Sleep:    time.Sleep,
+		Runner:   execGH{},
 	}}
 }
 

@@ -96,6 +96,7 @@ func TestLiveIdleNudge(t *testing.T) {
 		now = now.Add(nudgeInterval)
 	}
 	w.live.Interval = time.Millisecond
+	w.live.Runner = nil
 
 	run := w.Start(worker.Job{Repo: "o/r", Text: "do it"})
 	if run.Outcome != worker.OutcomeDone {
