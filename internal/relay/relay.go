@@ -18,7 +18,7 @@ func (r *Relay) OnAgreed(p plan.Block, resolved string, caps worker.Capabilities
 }
 
 func (r *Relay) OnRun(run worker.Run) dispatch.Action {
-	r.Council.SetOutcome(run.Outcome)
+	r.Council.SetRun(run)
 	act := dispatch.Handle(run)
 
 	switch act {

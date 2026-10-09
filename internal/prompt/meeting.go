@@ -71,3 +71,11 @@ VERIFY output (exit %d):
 
 Reply with exactly one line VERDICT: PASS or VERDICT: FAIL, then at most five short bullets. Do not police python or timeout wrappers.`, claim, diff, verifyExit, verifyOut)
 }
+
+func WorkerQuestion(question string) string {
+	return fmt.Sprintf("The worker asked this question:\n%s\n\nReply with one line ANSWER: <text> if you have a decision, otherwise say you disagree.", question)
+}
+
+func Interject(text string) string {
+	return fmt.Sprintf("Message from Sahil:\n%s", text)
+}

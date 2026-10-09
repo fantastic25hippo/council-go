@@ -8,6 +8,7 @@ import (
 
 	"github.com/fantastic25hippo/council-go/internal/cfg"
 	"github.com/fantastic25hippo/council-go/internal/meeting"
+	"github.com/fantastic25hippo/council-go/internal/pause"
 	"github.com/fantastic25hippo/council-go/internal/relay"
 	"github.com/fantastic25hippo/council-go/internal/state"
 	"github.com/fantastic25hippo/council-go/internal/term"
@@ -15,7 +16,7 @@ import (
 )
 
 // Run loads council.toml (or defaults) and starts the meeting.
-func Run(ctx context.Context, in io.Reader, out io.Writer, cwd string) error {
+func Run(ctx context.Context, in io.Reader, out io.Writer, cwd string, pc *pause.Controller) error {
 	c, err := cfg.Load(filepath.Join(cwd, "council.toml"))
 	if err != nil {
 		return err
@@ -36,7 +37,7 @@ func Run(ctx context.Context, in io.Reader, out io.Writer, cwd string) error {
 		Cfg:       c,
 		A:         a,
 		B:         b,
-		IO:        &term.IO{In: in, Out: out},
+		IO:        &term.IO{In: in, Out: out, Pause: pc},
 		Council:   council,
 		Relay:     &relay.Relay{Council: council, Worker: local.New(nil)},
 		WorkerFor: makeWorkers(c, cwd),

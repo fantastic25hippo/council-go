@@ -18,6 +18,7 @@ type Council struct {
 	Handle      Handle
 	FixRounds   int
 	LastOutcome worker.Outcome
+	LastRun     worker.Run
 }
 
 func (c *Council) SetRunning(workerID string, h Handle) {
@@ -37,6 +38,11 @@ func (c *Council) SetFixing() {
 
 func (c *Council) SetOutcome(o worker.Outcome) {
 	c.LastOutcome = o
+}
+
+func (c *Council) SetRun(r worker.Run) {
+	c.LastRun = r
+	c.LastOutcome = r.Outcome
 }
 
 func (c *Council) ClearRun() {

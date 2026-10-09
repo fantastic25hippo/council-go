@@ -17,7 +17,7 @@ func (s *Session) waitHI(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		line, err := s.IO.Read("Sahil> ")
+		line, err := s.readSahil(ctx, "Sahil> ")
 		if err != nil {
 			return err
 		}

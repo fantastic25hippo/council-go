@@ -2,6 +2,7 @@ package term
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 )
@@ -11,7 +12,7 @@ func TestPrintAndRead(t *testing.T) {
 	var out bytes.Buffer
 	io := &IO{In: in, Out: &out}
 	io.Print("Grok", "hello")
-	got, err := io.Read("Sahil> ")
+	got, err := io.Read(context.Background(), "Sahil> ")
 	if err != nil || got != "hi" {
 		t.Fatalf("read %q %v", got, err)
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/fantastic25hippo/council-go/internal/dispatch"
 	"github.com/fantastic25hippo/council-go/internal/evidence"
+	"github.com/fantastic25hippo/council-go/internal/extract"
 	"github.com/fantastic25hippo/council-go/internal/gitstat"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
@@ -78,10 +79,38 @@ func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job
 	act := s.Relay.OnRun(run)
 	switch act {
 	case dispatch.ActionAskSahil:
+		if s.Council.FixRounds >= s.Cfg.FixRoundsMax {
+			s.sys("Fix round cap reached. Adjourning.")
+			s.Council.Phase = state.PhaseAdjourn
+			return nil
+		}
+		s.Council.SetFixing() // Count against cap
+		s.Council.Phase = state.PhaseWorkerAsked
 		s.sys("Worker asked: " + run.Question)
-		ans, err := s.IO.Read("Sahil> ")
+
+		pq := prompt.WorkerQuestion(run.Question)
+		ra, rb, err := sendBoth(ctx, s.A, s.B, pq, pq)
 		if err != nil {
 			return err
+		}
+
+		aa, oka := extract.ParseAnswer(ra)
+		ab, okb := extract.ParseAnswer(rb)
+
+		if oka && okb && aa != "" && aa == ab {
+			return s.handleRun(ctx, w, job, w.Continue(job, aa))
+		}
+
+		s.say(s.A, ra)
+		s.say(s.B, rb)
+
+		ans, err := s.readSahil(ctx, "Sahil> ")
+		if err != nil {
+			return err
+		}
+		if q := strings.ToLower(strings.TrimSpace(ans)); q == "quit" || q == "exit" {
+			s.Council.Phase = state.PhaseAdjourn
+			return nil
 		}
 		return s.handleRun(ctx, w, job, w.Continue(job, ans))
 	case dispatch.ActionFix:

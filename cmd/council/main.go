@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/fantastic25hippo/council-go/internal/boot"
+	"github.com/fantastic25hippo/council-go/internal/pause"
 )
 
 func usage() {
@@ -27,9 +28,29 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGTERM, os.Interrupt)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGTERM)
 	defer stop()
-	if err := boot.Run(ctx, os.Stdin, os.Stdout, cwd); err != nil {
+
+	pc := pause.New()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			res := pc.OnSIGINT()
+			switch res {
+			case "quit":
+				stop()
+			case "pause":
+				fmt.Fprint(os.Stdout, "\n^C paused\n")
+			case "Already paused...":
+				fmt.Fprint(os.Stdout, "\nAlready paused...\n")
+			}
+		}
+	}()
+
+	if err := boot.Run(ctx, os.Stdin, os.Stdout, cwd, pc); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

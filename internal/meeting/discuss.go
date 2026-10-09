@@ -18,7 +18,7 @@ func (s *Session) waitTask(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		line, err := s.IO.Read("Sahil> ")
+		line, err := s.readSahil(ctx, "Sahil> ")
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (s *Session) discuss(ctx context.Context) error {
 	s.say(s.A, da)
 	s.say(s.B, db)
 	s.sys("Type a ruling, or quit.")
-	ruling, err := s.IO.Read("Sahil> ")
+	ruling, err := s.readSahil(ctx, "Sahil> ")
 	if err != nil {
 		return err
 	}
