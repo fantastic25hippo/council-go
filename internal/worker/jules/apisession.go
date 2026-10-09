@@ -48,3 +48,7 @@ func (s *APISession) ID() string {
 func (s *APISession) PRURL() string {
 	return s.info.PRURL
 }
+
+func (s *APISession) SetPRURL(url string) {
+	s.info.PRURL = url
+}

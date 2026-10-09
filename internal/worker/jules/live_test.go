@@ -71,3 +71,39 @@ func TestLiveStartRequiresRepo(t *testing.T) {
 		t.Fatalf("%v %s", run.Outcome, run.Report)
 	}
 }
+
+func TestLiveIdleNudge(t *testing.T) {
+	api := &seqDoer{calls: []struct {
+		method, path string
+		status       int
+		body         []byte
+	}{
+		{method: "POST", path: "/sessions", body: []byte(`{"id":"s1"}`)},
+		// 1st poll: IN_PROGRESS, no activities
+		{method: "GET", path: "/sessions/s1", body: []byte(`{"id":"s1","state":"IN_PROGRESS"}`)},
+		{method: "GET", path: "/sessions/s1/activities", body: []byte(`{}`)},
+		// Nudge is sent because mock clock jumps by 30 mins
+		{method: "POST", path: "/sessions/s1:sendMessage", body: []byte(`{}`)},
+		// 2nd poll: COMPLETED
+		{method: "GET", path: "/sessions/s1", body: []byte(`{"id":"s1","state":"COMPLETED"}`)},
+		{method: "GET", path: "/sessions/s1/activities", body: []byte(`{}`)},
+	}}
+	w := NewLive(&Client{API: api}, time.Hour)
+	now := time.Unix(1000, 0)
+	w.live.Now = func() time.Time { return now }
+	w.live.Sleep = func(d time.Duration) {
+		// Jump mock clock by nudge interval to force nudge on first sleep
+		now = now.Add(nudgeInterval)
+	}
+	w.live.Interval = time.Millisecond
+
+	run := w.Start(worker.Job{Repo: "o/r", Text: "do it"})
+	if run.Outcome != worker.OutcomeDone {
+		t.Fatalf("outcome %v report %s", run.Outcome, run.Report)
+	}
+
+	// Verify all calls were consumed, which means the nudge sendMessage was called
+	if api.i != len(api.calls) {
+		t.Fatalf("not all api calls made, expected %d, got %d", len(api.calls), api.i)
+	}
+}
