@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Council
+Comment=Pick a folder and start Council. Grok Build and Agy both start in that folder.
+Exec=/usr/bin/python3 -c "import os,sys,urllib.parse; r=sys.argv[1]; p=urllib.parse.unquote(urllib.parse.urlparse(r).path if r.startswith('file:') else r); d=os.path.dirname(os.path.abspath(p)); c=os.path.join(d,'bin','from-desktop'); os.execv(c,[c,r])" %k
+Icon=utilities-terminal
+Terminal=false
+StartupNotify=true
+Categories=Development;

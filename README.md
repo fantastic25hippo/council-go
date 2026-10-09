@@ -21,6 +21,8 @@ Start the meeting using `./bin/council`. It prepends `~/.grok/bin` and `~/.local
 You can also use `./bin/council-here FOLDER` to start in a specific folder (it sets `COUNCIL_START_DIR`).
 Setting `COUNCIL_START_DIR` directly skips the folder picker.
 
+The clickable launcher is `council.desktop` in this folder. Double-click it (Allow Launching if the file manager asks). A folder picker opens; Council, Grok Build, and Agy all start in the chosen folder. Do not copy the launcher to the Desktop.
+
 Type `hi`. Paste a task, then a blank line. Dual `AGREED` plus `LAUNCH` starts one worker. SIGHUP, SIGTERM, or interrupt cancels the in-flight worker.
 
 ## Build and test

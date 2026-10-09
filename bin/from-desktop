@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+import sys
+import os
+import urllib.parse
+
+if len(sys.argv) < 2 or not sys.argv[1]:
+    print("usage: from-desktop DESKTOP_FILE", file=sys.stderr)
+    sys.exit(1)
+
+raw = sys.argv[1]
+
+if raw.startswith("file:"):
+    parsed = urllib.parse.urlparse(raw)
+    path = urllib.parse.unquote(parsed.path)
+else:
+    path = urllib.parse.unquote(raw)
+
+root = os.path.dirname(os.path.abspath(path))
+launcher = os.path.join(root, "bin", "council")
+
+if not os.path.isfile(launcher):
+    print(f"error: launcher not found: {launcher}", file=sys.stderr)
+    sys.exit(1)
+
+os.execv(launcher, [launcher] + sys.argv[2:])

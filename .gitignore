@@ -1,6 +1,7 @@
 /bin/*
 !/bin/council
 !/bin/council-here
+!/bin/from-desktop
 /dist/
 *.exe
 *.test
