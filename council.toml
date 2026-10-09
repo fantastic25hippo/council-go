@@ -1,5 +1,6 @@
 [relay]
 worker = "auto"
+extra_path = ["~/.grok/bin", "~/.local/bin"]
 check_unpushed = true
 debate_turns_each = 3
 fix_rounds_max = 3

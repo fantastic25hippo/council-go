@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 
 	"github.com/fantastic25hippo/council-go/internal/cfg"
 	"github.com/fantastic25hippo/council-go/internal/meeting"
@@ -17,10 +16,13 @@ import (
 
 // Run loads council.toml (or defaults) and starts the meeting.
 func Run(ctx context.Context, in io.Reader, out io.Writer, cwd string, pc *pause.Controller) error {
-	c, err := cfg.Load(filepath.Join(cwd, "council.toml"))
+	c, err := cfg.LoadDir(cwd)
 	if err != nil {
 		return err
 	}
+
+	c.PrependPATH(c.ExtraPath)
+
 	if len(c.Members) < 2 {
 		return fmt.Errorf("need two members")
 	}

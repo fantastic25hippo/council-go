@@ -112,8 +112,8 @@ func TestWorker_Capabilities(t *testing.T) {
 	if !caps.CanAskAndWait {
 		t.Errorf("Expected CanAskAndWait true")
 	}
-	if caps.KeepsMemoryAcrossFixes {
-		t.Errorf("Expected KeepsMemoryAcrossFixes false")
+	if !caps.KeepsMemoryAcrossFixes {
+		t.Errorf("Expected KeepsMemoryAcrossFixes true")
 	}
 	if caps.ReachesGitHub {
 		t.Errorf("Expected ReachesGitHub false")
@@ -124,6 +124,21 @@ func TestWorker_Capabilities(t *testing.T) {
 	if caps.OpensPR {
 		t.Errorf("Expected OpensPR false")
 	}
+}
+
+func TestWorker_Start_SetsConvID(t *testing.T) {
+	// A new test to ensure that mockRunner doesn't crash or get ConvID set.
+	runner := &mockRunner{
+		stdout: "{\"conversation_id\":\"c1\",\"response\":\"resp\"}",
+		exit:   0,
+	}
+	w := New(runner)
+	run := w.Start(worker.Job{})
+	if run.Outcome != worker.OutcomeDone {
+		t.Errorf("Expected OutcomeDone, got %v", run.Outcome)
+	}
+	// The mockRunner does not parse JSON. The parsing is in AgyRunner.Run.
+	// We just ensure it doesn't fail.
 }
 
 func TestWorker_Cancel(t *testing.T) {

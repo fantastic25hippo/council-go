@@ -19,7 +19,7 @@ func capsFor(id string) worker.Capabilities {
 	if id == "jules" {
 		return worker.Capabilities{CanAskAndWait: true, KeepsMemoryAcrossFixes: true, ReachesGitHub: true, OpensPR: true}
 	}
-	return worker.Capabilities{CanAskAndWait: true, TouchesLocalCheckout: true}
+	return worker.Capabilities{CanAskAndWait: true, KeepsMemoryAcrossFixes: true, TouchesLocalCheckout: true}
 }
 
 func originGitHub(dir string) bool {

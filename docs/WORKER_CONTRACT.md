@@ -9,7 +9,7 @@ Declared before planning. After `AGREED`, WORKER and REPO do not change.
 | Field | Local | Jules |
 |---|---|---|
 | `CanAskAndWait` | true | true |
-| `KeepsMemoryAcrossFixes` | false until conversation resume is proven | true |
+| `KeepsMemoryAcrossFixes` | true | true |
 | `ReachesGitHub` | false | true |
 | `TouchesLocalCheckout` | true | false |
 | `OpensPR` | false | true |

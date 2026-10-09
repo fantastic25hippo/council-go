@@ -1,6 +1,12 @@
 package cfg
 
-import "time"
+import (
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+)
 
 type Member struct {
 	ID          string
@@ -26,6 +32,7 @@ type Config struct {
 	FixRoundsMax    int
 	MemberTimeout   time.Duration
 	WorkerTimeout   time.Duration
+	ExtraPath       []string
 	Members         []Member
 	Workers         []Worker
 }
@@ -38,6 +45,7 @@ func Defaults() Config {
 		FixRoundsMax:    3,
 		MemberTimeout:   300 * time.Second,
 		WorkerTimeout:   600 * time.Second,
+		ExtraPath:       []string{"~/.grok/bin", "~/.local/bin"},
 		Members: []Member{
 			{ID: "grok", DisplayName: "Grok", Driver: "grok-acp", CLI: "grok", Model: "grok-4.6", Effort: "high"},
 			{ID: "gemini", DisplayName: "Gemini", Driver: "agy-stream", CLI: "agy", Model: "Gemini 3.8 Flash (High)"},
@@ -55,6 +63,117 @@ func (c Config) MemberIDs() []string {
 		out = append(out, m.ID)
 	}
 	return out
+}
+
+func applyRelay(c *Config, k, v string) {
+	switch k {
+	case "worker":
+		c.Worker = v
+	case "extra_path":
+		c.ExtraPath = parseArray(v)
+	case "check_unpushed":
+		c.CheckUnpushed = v == "true"
+	case "debate_turns_each":
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.DebateTurnsEach = n
+		}
+	case "fix_rounds_max":
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.FixRoundsMax = n
+		}
+	case "member_timeout_secs":
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.MemberTimeout = time.Duration(n) * time.Second
+		}
+	case "worker_timeout_secs":
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.WorkerTimeout = time.Duration(n) * time.Second
+		}
+	}
+}
+
+func applyMember(m *Member, k, v string) {
+	switch k {
+	case "id":
+		m.ID = v
+	case "display_name":
+		m.DisplayName = v
+	case "driver":
+		m.Driver = v
+	case "cli":
+		m.CLI = v
+	case "model":
+		m.Model = v
+	case "effort":
+		m.Effort = v
+	}
+}
+
+func applyWorker(w *Worker, k, v string) {
+	switch k {
+	case "id":
+		w.ID = v
+	case "display_name":
+		w.DisplayName = v
+	case "driver":
+		w.Driver = v
+	case "cli":
+		w.CLI = v
+	case "model":
+		w.Model = v
+	}
+}
+
+func (c *Config) PrependPATH(dirs []string) {
+	if len(dirs) == 0 {
+		return
+	}
+	pathEnv := os.Getenv("PATH")
+	var newPaths []string
+
+	// From last to first
+	for i := len(dirs) - 1; i >= 0; i-- {
+		d := dirs[i]
+		if strings.HasPrefix(d, "~") {
+			if home, err := os.UserHomeDir(); err == nil {
+				d = home + d[1:]
+			}
+		}
+		d = os.ExpandEnv(d)
+		if d == "" {
+			continue
+		}
+
+		stat, err := os.Stat(d)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
+
+		found := false
+		for _, p := range filepath.SplitList(pathEnv) {
+			if p == d {
+				found = true
+				break
+			}
+		}
+		for _, p := range newPaths {
+			if p == d {
+				found = true
+				break
+			}
+		}
+		if !found {
+			newPaths = append([]string{d}, newPaths...)
+		}
+	}
+
+	if len(newPaths) > 0 {
+		finalPath := strings.Join(newPaths, string(os.PathListSeparator))
+		if pathEnv != "" {
+			finalPath = finalPath + string(os.PathListSeparator) + pathEnv
+		}
+		os.Setenv("PATH", finalPath)
+	}
 }
 
 func (c Config) WorkerIDs() []string {

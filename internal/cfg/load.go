@@ -2,21 +2,20 @@ package cfg
 
 import (
 	"bufio"
+	"fmt"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
-	"time"
 )
 
-// Load reads a small council.toml subset. Missing file returns Defaults.
-func Load(path string) (Config, error) {
-	c := Defaults()
+// applyFile parses a file and modifies the given Config.
+func applyFile(c *Config, path string, replaceTables bool) error {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return c, nil
+			return nil
 		}
-		return c, err
+		return err
 	}
 	defer f.Close()
 
@@ -38,7 +37,9 @@ func Load(path string) (Config, error) {
 			case line == "[[members]]":
 				section = "members"
 				if !sawMembers {
-					c.Members = nil
+					if replaceTables {
+						c.Members = nil
+					}
 					sawMembers = true
 				}
 				c.Members = append(c.Members, Member{})
@@ -46,7 +47,9 @@ func Load(path string) (Config, error) {
 			case line == "[[workers]]":
 				section = "workers"
 				if !sawWorkers {
-					c.Workers = nil
+					if replaceTables {
+						c.Workers = nil
+					}
 					sawWorkers = true
 				}
 				c.Workers = append(c.Workers, Worker{})
@@ -62,7 +65,7 @@ func Load(path string) (Config, error) {
 		}
 		switch section {
 		case "relay":
-			applyRelay(&c, k, v)
+			applyRelay(c, k, v)
 		case "members":
 			if curMember != nil {
 				applyMember(curMember, k, v)
@@ -73,13 +76,64 @@ func Load(path string) (Config, error) {
 			}
 		}
 	}
+	return sc.Err()
+}
+
+func expandPath(p string) string {
+	if strings.HasPrefix(p, "~") {
+		if home, err := os.UserHomeDir(); err == nil {
+			p = home + p[1:]
+		}
+	}
+	return os.ExpandEnv(p)
+}
+
+// LoadDir loads the config from cwd, respecting COUNCIL_CONFIG and council.local.toml.
+func LoadDir(cwd string) (Config, error) {
+	basePath := filepath.Join(cwd, "council.toml")
+	envPath := strings.TrimSpace(os.Getenv("COUNCIL_CONFIG"))
+	envSet := false
+	if envPath != "" {
+		basePath = expandPath(envPath)
+		envSet = true
+	}
+
+	c, err := Load(basePath)
+	if err != nil {
+		return c, err
+	}
+	if envSet {
+		if _, statErr := os.Stat(basePath); os.IsNotExist(statErr) {
+			return c, fmt.Errorf("COUNCIL_CONFIG file missing: %s", basePath)
+		}
+	}
+
+	localPath := filepath.Join(cwd, "council.local.toml")
+	if err := applyFile(&c, localPath, true); err != nil {
+		return c, err
+	}
+
 	if len(c.Members) == 0 {
 		c.Members = Defaults().Members
 	}
 	if len(c.Workers) == 0 {
 		c.Workers = Defaults().Workers
 	}
-	return c, sc.Err()
+
+	return c, nil
+}
+
+// Load reads a small council.toml subset. Missing file returns Defaults.
+func Load(path string) (Config, error) {
+	c := Defaults()
+	err := applyFile(&c, path, true)
+	if len(c.Members) == 0 {
+		c.Members = Defaults().Members
+	}
+	if len(c.Workers) == 0 {
+		c.Workers = Defaults().Workers
+	}
+	return c, err
 }
 
 func splitKV(line string) (string, string, bool) {
@@ -96,59 +150,30 @@ func splitKV(line string) (string, string, bool) {
 	return k, v, true
 }
 
-func applyRelay(c *Config, k, v string) {
-	switch k {
-	case "worker":
-		c.Worker = v
-	case "check_unpushed":
-		c.CheckUnpushed = v == "true"
-	case "debate_turns_each":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.DebateTurnsEach = n
+func parseArray(s string) []string {
+	if !strings.HasPrefix(s, "[") || !strings.HasSuffix(s, "]") {
+		if s == "" {
+			return nil
 		}
-	case "fix_rounds_max":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.FixRoundsMax = n
+		return []string{s}
+	}
+	s = strings.TrimSpace(s[1 : len(s)-1])
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	var res []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
 		}
-	case "member_timeout_secs":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.MemberTimeout = time.Duration(n) * time.Second
-		}
-	case "worker_timeout_secs":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.WorkerTimeout = time.Duration(n) * time.Second
+		p = strings.Trim(p, "\"'")
+		if p != "" {
+			res = append(res, p)
 		}
 	}
+	return res
 }
 
-func applyMember(m *Member, k, v string) {
-	switch k {
-	case "id":
-		m.ID = v
-	case "display_name":
-		m.DisplayName = v
-	case "driver":
-		m.Driver = v
-	case "cli":
-		m.CLI = v
-	case "model":
-		m.Model = v
-	case "effort":
-		m.Effort = v
-	}
-}
 
-func applyWorker(w *Worker, k, v string) {
-	switch k {
-	case "id":
-		w.ID = v
-	case "display_name":
-		w.DisplayName = v
-	case "driver":
-		w.Driver = v
-	case "cli":
-		w.CLI = v
-	case "model":
-		w.Model = v
-	}
-}

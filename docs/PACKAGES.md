@@ -17,7 +17,7 @@
 - `internal/check`: Every `.go` file is at most 200 lines.
 - `internal/meeting`: Meeting loop (hi, greet, discuss, dual AGREED, Prepare, worker, independent VERIFY) plus Prepare checks.
 - `internal/member`: Live member interface. Fake for tests. `grok-acp` and `agy-stream` adapters.
-- `internal/cfg`: Slim `council.toml` load. Missing file uses defaults.
+- `internal/cfg`: Slim `council.toml` load. LoadDir layers COUNCIL_CONFIG, council.toml, and council.local.toml. Missing file uses defaults.
 - `internal/term`: Labeled print and Sahil prompt.
 - `internal/extract`: `IsAgreed`, `ParsePlan`, `ParseLaunch`, `ParseVerdict`. Last-line AGREED only.
 - `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed.

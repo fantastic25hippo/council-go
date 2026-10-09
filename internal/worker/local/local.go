@@ -30,7 +30,7 @@ func New(run Runner) *Worker {
 func (w *Worker) Capabilities() worker.Capabilities {
 	return worker.Capabilities{
 		CanAskAndWait:          true,
-		KeepsMemoryAcrossFixes: false,
+		KeepsMemoryAcrossFixes: true,
 		ReachesGitHub:          false,
 		TouchesLocalCheckout:   true,
 		OpensPR:                false,

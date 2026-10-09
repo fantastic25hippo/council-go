@@ -10,3 +10,4 @@ coverage.out
 .vscode/
 *.swp
 *~
+council.local.toml

@@ -2,6 +2,7 @@ package local
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,6 +26,7 @@ type AgyRunner struct {
 	Effort  string
 	Cwd     string
 	Timeout time.Duration
+	ConvID  string
 	mu      sync.Mutex
 	cmd     *exec.Cmd
 }
@@ -65,7 +67,32 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 				return stdout.String(), stderr.String(), 1, err
 			}
 		}
-		return stdout.String(), stderr.String(), exit, nil
+
+		outText := stdout.String()
+		var js map[string]interface{}
+		if json.Unmarshal([]byte(outText), &js) == nil {
+			// Find conversation_id
+			if cid, ok := js["conversation_id"].(string); ok && cid != "" {
+				r.ConvID = cid
+			} else if res, ok := js["result"].(map[string]interface{}); ok {
+				if cid, ok := res["conversation_id"].(string); ok && cid != "" {
+					r.ConvID = cid
+				}
+			}
+
+			// Find response
+			if resp, ok := js["response"].(string); ok {
+				outText = resp
+			} else if res, ok := js["result"].(map[string]interface{}); ok {
+				if resp, ok := res["response"].(string); ok {
+					outText = resp
+				}
+			} else if resStr, ok := js["result"].(string); ok {
+				outText = resStr
+			}
+		}
+
+		return outText, stderr.String(), exit, nil
 	case <-timer.C:
 		_ = proc.Kill(cmd)
 		<-done
@@ -102,6 +129,10 @@ func (r *AgyRunner) argv(job worker.Job) []string {
 	for _, d := range addDirs(r.Cwd, job.Paths) {
 		argv = append(argv, "--add-dir", d)
 	}
+	if r.ConvID != "" {
+		argv = append(argv, "--conversation", r.ConvID)
+	}
+	argv = append(argv, "--output-format", "json")
 	argv = append(argv, "-p", job.Text)
 	return argv
 }
