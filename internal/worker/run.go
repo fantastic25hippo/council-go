@@ -8,6 +8,8 @@ type Job struct {
 	Paths  []string
 	Verify string
 	Repo   string
+	SessionID string
+	PRURL string
 }
 
 // Evidence is collected by the relay on DONE. Phase 1 leaves it empty.

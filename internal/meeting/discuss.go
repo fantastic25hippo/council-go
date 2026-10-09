@@ -7,6 +7,7 @@ import (
 
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
+	"github.com/fantastic25hippo/council-go/internal/attach"
 	"github.com/fantastic25hippo/council-go/internal/route"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
@@ -32,6 +33,28 @@ func (s *Session) waitTask(ctx context.Context) error {
 				continue
 			}
 			s.Task = strings.Join(lines, "\n")
+			if req, ok := attach.Parse(s.Task); ok {
+				if req.Error != "" {
+					s.sys(req.Error)
+					s.Task = ""
+					lines = nil
+					continue
+				}
+				if req.Incomplete != "" {
+					s.sys(req.Incomplete)
+					s.Task = ""
+					lines = nil
+					continue
+				}
+				if req.SessionID != "" && req.PRNumber != "" {
+					s.Attach = req
+					s.ResolvedWorker = "jules"
+					s.sys(fmt.Sprintf("Attaching to Jules session %s and PR #%s.", req.SessionID, req.PRNumber))
+					s.logLine("sahil", s.Task)
+					return nil
+				}
+			}
+
 			override, err := plan.ParseOverride(s.Task)
 			if err != nil {
 				s.sys(fmt.Sprintf("override parse error: %v", err))

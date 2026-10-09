@@ -46,6 +46,22 @@ func (l *Live) start(job worker.Job) error {
 	if job.Repo == "" {
 		return errors.New("empty REPO")
 	}
+
+	if job.SessionID != "" {
+		l.ctx, l.cancel = context.WithCancel(context.Background())
+		l.Repo = job.Repo
+		l.sess = &APISession{C: l.Client, SID: job.SessionID}
+		if job.PRURL != "" {
+			l.sess.SetPRURL(job.PRURL)
+		}
+		l.approved = false
+		err := l.poll()
+		if l.sess.PRURL() == "" && job.PRURL != "" {
+			l.sess.SetPRURL(job.PRURL)
+		}
+		return err
+	}
+
 	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.Repo = job.Repo
 	branch := l.Branch

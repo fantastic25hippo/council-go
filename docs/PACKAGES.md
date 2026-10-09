@@ -1,5 +1,6 @@
 # Packages
 
+- `internal/attach`: Parse Jules session URLs/ids and GitHub PR URLs/#N from the task.
 - `internal/worker`: Relay-owned contract: capabilities, typed outcomes, `Start` / `Continue` / `Cancel`.
 - `internal/worker/local`: Local adapter. ASKED only on a final `COUNCIL-QUESTION:` line. `Cancel` kills the process group.
 - `internal/worker/jules`: Jules adapter. ASKED from session state `AWAITING_USER_FEEDBACK`. HTTP via an injected `Doer`.
