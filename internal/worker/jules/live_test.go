@@ -137,3 +137,45 @@ func TestLiveCancel(t *testing.T) {
 		t.Fatalf("expected cancelled outcome, got %v", run.Outcome)
 	}
 }
+
+func TestLiveStartAttach(t *testing.T) {
+	doer := &seqDoer{
+		calls: []struct {
+			method, path string
+			status       int
+			body         []byte
+		}{
+			{
+				method: "GET",
+				path:   "/sessions/s1",
+				status: 200,
+				body:   []byte(`{"state":"COMPLETED"}`),
+			},
+			{
+				method: "GET",
+				path:   "/sessions/s1/activities",
+				status: 200,
+				body:   []byte(`{}`),
+			},
+		},
+	}
+	c := &Client{API: doer}
+	w := NewLive(c, time.Second)
+
+	job := worker.Job{
+		Repo:      "o/r",
+		SessionID: "s1",
+		PRURL:     "https://github.com/o/r/pull/1",
+	}
+	run := w.Start(job)
+
+	if run.Outcome != worker.OutcomeDone {
+		t.Fatalf("want Done, got %v", run.Outcome)
+	}
+	if run.Raw.SessionID != "s1" {
+		t.Errorf("want s1 got %q", run.Raw.SessionID)
+	}
+	if run.Raw.PRURL != "https://github.com/o/r/pull/1" {
+		t.Errorf("want pull/1 got %q", run.Raw.PRURL)
+	}
+}

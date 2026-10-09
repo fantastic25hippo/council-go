@@ -1,6 +1,7 @@
 package meeting
 
 import (
+	"github.com/fantastic25hippo/council-go/internal/attach"
 	"github.com/fantastic25hippo/council-go/internal/cfg"
 	"github.com/fantastic25hippo/council-go/internal/evidence"
 	"github.com/fantastic25hippo/council-go/internal/member"
@@ -23,6 +24,7 @@ type Session struct {
 	Cwd       string
 	GH        evidence.GHRunner
 
+	Attach         attach.Request
 	Task           string
 	ResolvedWorker string
 	Plan           plan.Block

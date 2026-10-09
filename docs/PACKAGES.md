@@ -1,5 +1,6 @@
 # Packages
 
+- `internal/attach`: Parse Jules session URLs/ids and GitHub PR URLs/#N from the task.
 - `internal/worker`: Relay-owned contract: capabilities, typed outcomes, `Start` / `Continue` / `Cancel`.
 - `internal/worker/local`: Local adapter. ASKED only on a final `COUNCIL-QUESTION:` line. `Cancel` kills the process group.
 - `internal/worker/jules`: Jules adapter. ASKED from session state `AWAITING_USER_FEEDBACK`. HTTP via an injected `Doer`.
@@ -21,6 +22,6 @@
 - `internal/cfg`: Slim `council.toml` load. LoadDir layers COUNCIL_CONFIG, council.toml, and council.local.toml. Missing file uses defaults.
 - `internal/term`: Labeled print and Sahil prompt.
 - `internal/extract`: `IsAgreed`, `ParsePlan`, `ParseLaunch`, `ParseVerdict`. Last-line AGREED only.
-- `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed.
+- `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed. OriginRepo parses owner/repo from origin.
 - `internal/boot`: Wire config, members, and workers for `cmd/council`.
 - `cmd/council`: Starts the meeting in the current directory. SIGHUP/TERM/interrupt cancels the worker.

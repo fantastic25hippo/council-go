@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/fantastic25hippo/council-go/internal/attach"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/sitlog"
 	"github.com/fantastic25hippo/council-go/internal/state"
@@ -43,6 +44,16 @@ func (s *Session) Run(ctx context.Context) error {
 		if s.Council.Phase == state.PhaseAdjourn {
 			return nil
 		}
+		if s.Attach.SessionID != "" && s.Attach.PRNumber != "" {
+			if err := s.workAttach(ctx); err != nil {
+				return err
+			}
+			if s.Council.Phase == state.PhaseAdjourn {
+				return nil
+			}
+			s.nextTask()
+			continue
+		}
 		if err := s.discuss(ctx); err != nil {
 			return err
 		}
@@ -65,6 +76,7 @@ func (s *Session) Run(ctx context.Context) error {
 }
 
 func (s *Session) nextTask() {
+	s.Attach = attach.Request{}
 	s.Task = ""
 	s.Plan = plan.Block{}
 	s.PlanText = ""

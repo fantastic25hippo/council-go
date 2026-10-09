@@ -43,9 +43,24 @@ func (l *Live) start(job worker.Job) error {
 	if l.Client == nil {
 		return errors.New("jules client missing")
 	}
+	if job.SessionID != "" {
+		l.ctx, l.cancel = context.WithCancel(context.Background())
+		l.Repo = job.Repo
+		l.sess = &APISession{C: l.Client, SID: job.SessionID}
+		if job.PRURL != "" {
+			l.sess.SetPRURL(job.PRURL)
+		}
+		l.approved = false
+		err := l.poll()
+		if l.sess != nil && l.sess.PRURL() == "" && job.PRURL != "" {
+			l.sess.SetPRURL(job.PRURL)
+		}
+		return err
+	}
 	if job.Repo == "" {
 		return errors.New("empty REPO")
 	}
+
 	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.Repo = job.Repo
 	branch := l.Branch
