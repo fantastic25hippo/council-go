@@ -1,4 +1,6 @@
-/bin/
+/bin/*
+!/bin/council
+!/bin/council-here
 /dist/
 *.exe
 *.test

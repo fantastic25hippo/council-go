@@ -13,9 +13,13 @@ See [How to Use council-go](docs/HOW_TO_USE_COUNCIL-GO.md), [Guardrails](docs/GU
 `grok` and `agy` must be on `PATH`. Jules needs `JULES_API_KEY` in the environment or `~/.config/council/jules.env`.
 
 ```bash
-go build -o bin/council ./cmd/council
-./bin/council
+go build -o bin/council-bin ./cmd/council
 ```
+
+Start the meeting using `./bin/council`. It prepends `~/.grok/bin` and `~/.local/bin` to PATH, sources `~/.config/council/jules.env` if present, asks for a folder (via zenity if GUI, else via TTY), then starts the meeting in that folder.
+
+You can also use `./bin/council-here FOLDER` to start in a specific folder (it sets `COUNCIL_START_DIR`).
+Setting `COUNCIL_START_DIR` directly skips the folder picker.
 
 Type `hi`. Paste a task, then a blank line. Dual `AGREED` plus `LAUNCH` starts one worker. SIGHUP, SIGTERM, or interrupt cancels the in-flight worker.
 
@@ -31,7 +35,7 @@ Go 1.22+. No network in tests. No live Jules API in tests.
 
 See [docs/GUARDRAILS.md](docs/GUARDRAILS.md). Short version:
 
-- One static binary `bin/council`.
+- Launcher `bin/council`; compiled binary `bin/council-bin`.
 - No `.go` file over 200 lines. Packages form a DAG. No import cycles.
 - No pay-per-token API keys.
 - Council never merges to `master`. Jules opens PRs; Sahil reviews and merges.

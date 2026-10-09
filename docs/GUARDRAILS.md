@@ -5,7 +5,7 @@ Do not break these.
 ## Language
 
 - Go 1.22+.
-- One static binary `bin/council` when `cmd/council` exists.
+- Launcher `bin/council`. Compiled binary `bin/council-bin` from `cmd/council`.
 - No `.go` source file may exceed 200 lines.
 - Packages form a directed acyclic graph. Import cycles are a build failure.
 

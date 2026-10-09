@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+    echo "usage: council-here FOLDER" >&2
+    exit 1
+fi
+
+folder="$(readlink -f "$1")"
+
+if [ ! -d "$folder" ]; then
+    echo "error: '$folder' is not an existing directory" >&2
+    exit 1
+fi
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_PATH")")"
+COUNCIL_LAUNCHER="$REPO_DIR/bin/council"
+
+if [ -n "${COUNCIL_TMUX_SESSION:-}" ] && command -v tmux >/dev/null 2>&1; then
+    if tmux has-session -t "$COUNCIL_TMUX_SESSION" 2>/dev/null; then
+        echo "error: tmux session '$COUNCIL_TMUX_SESSION' already exists" >&2
+        exit 1
+    fi
+    tmux new-session -d -s "$COUNCIL_TMUX_SESSION" \
+        env COUNCIL_START_DIR="$folder" "$COUNCIL_LAUNCHER"
+    tmux set-option -t "$COUNCIL_TMUX_SESSION" remain-on-exit on
+    echo "Started council in tmux session '$COUNCIL_TMUX_SESSION'. Attach with:"
+    echo "  tmux attach-session -t '$COUNCIL_TMUX_SESSION'"
+    exit 0
+fi
+
+# Fallback to graphical terminals
+if command -v gnome-terminal >/dev/null 2>&1; then
+    exec gnome-terminal --title='Council' --working-directory="$folder" -- \
+        bash -lc 'COUNCIL_START_DIR="$0" "$1"; echo; read -r -p "Press Enter to close" _' \
+        "$folder" "$COUNCIL_LAUNCHER"
+elif command -v xfce4-terminal >/dev/null 2>&1; then
+    exec xfce4-terminal --title='Council' -x bash -c "COUNCIL_START_DIR=\"$folder\" \"$COUNCIL_LAUNCHER\"; echo; read -r -p 'Press Enter to close'"
+elif command -v x-terminal-emulator >/dev/null 2>&1; then
+    exec x-terminal-emulator -T 'Council' -e bash -c "COUNCIL_START_DIR=\"$folder\" \"$COUNCIL_LAUNCHER\"; echo; read -r -p 'Press Enter to close'"
+elif command -v xterm >/dev/null 2>&1; then
+    exec xterm -title 'Council' -e bash -c "COUNCIL_START_DIR=\"$folder\" \"$COUNCIL_LAUNCHER\"; echo; read -r -p 'Press Enter to close'"
+else
+    echo "error: no terminal was found" >&2
+    exit 1
+fi

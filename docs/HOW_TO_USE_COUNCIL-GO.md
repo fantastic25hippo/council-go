@@ -2,7 +2,7 @@
 council-go keeps one live Grok session and one live Gemini session, they agree a plan, then a worker types.
 
 # How to start
-From a checkout where `grok` and `agy` are on `PATH`, run `go build -o bin/council ./cmd/council` then `./bin/council`. The current directory is the working folder. Type `hi`, both members greet, then `Sahil>` waits for a task.
+From a checkout where `grok` and `agy` are on `PATH`, run `go build -o bin/council-bin ./cmd/council` then `./bin/council`. The launcher prepends `~/.grok/bin` and `~/.local/bin`, sources `~/.config/council/jules.env` if present, and asks for a working folder (zenity when GUI, else TTY). `./bin/council-here FOLDER` or `COUNCIL_START_DIR` skips the picker. Type `hi`, both members greet, then `Sahil>` waits for a task.
 
 # Run a meeting
 Paste a task at `Sahil>`, then a blank line. Independent proposals, up to 3 debate turns each, first `AGREED` writes the plan, second `AGREED` plus `LAUNCH` starts the worker, independent `VERDICT`, at most 3 fix rounds, leftover disputes go to Sahil. `quit` and `exit` adjourn. SIGHUP, SIGTERM, or interrupt cancels the in-flight worker.
