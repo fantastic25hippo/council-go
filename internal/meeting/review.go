@@ -24,8 +24,11 @@ func (s *Session) review(ctx context.Context, w worker.Worker, job worker.Job, r
 	pa, pb := extract.ParseVerdict(va), extract.ParseVerdict(vb)
 	s.sys(fmt.Sprintf("Verdicts: %s=%s %s=%s", s.A.DisplayName(), nz(pa), s.B.DisplayName(), nz(pb)))
 	if pa == "PASS" && pb == "PASS" {
-		s.sys("Both PASS. Adjourning.")
-		s.Council.Phase = state.PhaseAdjourn
+		s.sys("Both PASS.")
+		if run.Raw.PRURL != "" {
+			s.sys("PR: " + run.Raw.PRURL)
+			s.sys("Ready for Sahil's review.")
+		}
 		return nil
 	}
 	if s.Council.FixRounds >= s.Cfg.FixRoundsMax {

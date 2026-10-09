@@ -3,6 +3,7 @@ package meeting
 import (
 	"context"
 
+	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
 
@@ -22,22 +23,40 @@ func (s *Session) Run(ctx context.Context) error {
 	if err := s.greet(ctx); err != nil {
 		return err
 	}
-	if err := s.waitTask(ctx); err != nil {
-		return err
+
+	for {
+		if err := s.waitTask(ctx); err != nil {
+			return err
+		}
+		if s.Council.Phase == state.PhaseAdjourn {
+			return nil
+		}
+		if err := s.discuss(ctx); err != nil {
+			return err
+		}
+		if s.Council.Phase == state.PhaseAdjourn {
+			return nil
+		}
+		if s.Plan.Worker == "" {
+			s.sys("No agreed plan.")
+			s.Council.Phase = state.PhaseAdjourn
+			return nil
+		}
+		if err := s.work(ctx); err != nil {
+			return err
+		}
+		if s.Council.Phase == state.PhaseAdjourn {
+			return nil
+		}
+		s.nextTask()
 	}
-	if s.Council.Phase == state.PhaseAdjourn {
-		return nil
-	}
-	if err := s.discuss(ctx); err != nil {
-		return err
-	}
-	if s.Council.Phase == state.PhaseAdjourn {
-		return nil
-	}
-	if s.Plan.Worker == "" {
-		s.sys("No agreed plan.")
-		s.Council.Phase = state.PhaseAdjourn
-		return nil
-	}
-	return s.work(ctx)
+}
+
+func (s *Session) nextTask() {
+	s.Task = ""
+	s.Plan = plan.Block{}
+	s.PlanText = ""
+	s.Council.FixRounds = 0
+	s.Council.WorkerID = ""
+	s.Council.ClearRun()
 }
