@@ -15,6 +15,7 @@ Do not break these.
 - Council never merges to `master`. No `auto_merge`. Merging is Sahil's manual review.
 - Members stay read-only sandboxed via CLI flags.
 - Do not touch grok-agy or the Python Council checkout.
+- Leave untracked `logs/` sitting files alone.
 
 ## Simplicity
 

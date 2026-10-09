@@ -15,7 +15,8 @@
 - `internal/proc`: Start a process group (`Setpgid`) and SIGKILL the group.
 - `internal/relay`: `OnAgreed`, `OnRun`, `OnSIGHUP`. Wires state, dispatch, validate, and Cancel.
 - `internal/check`: Every `.go` file is at most 200 lines.
-- `internal/meeting`: Meeting loop (hi, greet, discuss, dual AGREED, Prepare, worker, independent VERIFY) plus Prepare checks.
+- `internal/sitlog`: Sitting log under `<cwd>/logs/council-*.log`, keep 15, redact secrets.
+- `internal/meeting`: Meeting loop (hi, greet, discuss, dual AGREED, Prepare, worker, independent VERIFY) plus Prepare checks. Split verdicts go to Sahil after one cross-read.
 - `internal/member`: Live member interface. Fake for tests. `grok-acp` and `agy-stream` adapters.
 - `internal/cfg`: Slim `council.toml` load. LoadDir layers COUNCIL_CONFIG, council.toml, and council.local.toml. Missing file uses defaults.
 - `internal/term`: Labeled print and Sahil prompt.

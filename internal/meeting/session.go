@@ -6,6 +6,7 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/member"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/relay"
+	"github.com/fantastic25hippo/council-go/internal/sitlog"
 	"github.com/fantastic25hippo/council-go/internal/state"
 	"github.com/fantastic25hippo/council-go/internal/term"
 	"github.com/fantastic25hippo/council-go/internal/worker"
@@ -26,6 +27,7 @@ type Session struct {
 	ResolvedWorker string
 	Plan           plan.Block
 	PlanText       string
+	Log            *sitlog.Log
 }
 
 func (s *Session) workerIDs() []string {
@@ -37,8 +39,16 @@ func (s *Session) workerIDs() []string {
 
 func (s *Session) sys(msg string) {
 	s.IO.Print("", msg)
+	s.logLine("sys", msg)
 }
 
 func (s *Session) say(m member.Member, text string) {
 	s.IO.Print(m.DisplayName(), text)
+	s.logLine("member", m.DisplayName()+": "+text)
+}
+
+func (s *Session) logLine(kind, text string) {
+	if s.Log != nil {
+		s.Log.Line(kind, text)
+	}
 }

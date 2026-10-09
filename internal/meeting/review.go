@@ -24,27 +24,12 @@ func (s *Session) review(ctx context.Context, w worker.Worker, job worker.Job, r
 	pa, pb := extract.ParseVerdict(va), extract.ParseVerdict(vb)
 	s.sys(fmt.Sprintf("Verdicts: %s=%s %s=%s", s.A.DisplayName(), nz(pa), s.B.DisplayName(), nz(pb)))
 	if pa == "PASS" && pb == "PASS" {
-		s.sys("Both PASS.")
-		if run.Raw.PRURL != "" {
-			s.sys("PR: " + run.Raw.PRURL)
-			s.sys("Ready for Sahil's review.")
-		}
-		return nil
+		return s.bothPass(run)
 	}
-	if s.Council.FixRounds >= s.Cfg.FixRoundsMax {
-		s.sys("Fix round cap reached. Adjourning.")
-		s.Council.Phase = state.PhaseAdjourn
-		return nil
+	if pa == "FAIL" && pb == "FAIL" {
+		return s.startFix(ctx, w, job, va, vb)
 	}
-	s.Council.SetFixing()
-	s.Council.Phase = state.PhaseFixing
-	s.sys("Starting a fix round.")
-	fix := job
-	fix.Text = job.Text + "\n\nFIX:\n" + va + "\n" + vb
-	if w.Capabilities().KeepsMemoryAcrossFixes {
-		return s.handleRun(ctx, w, fix, w.Continue(job, fix.Text))
-	}
-	return s.handleRun(ctx, w, fix, w.Start(fix))
+	return s.splitOnce(ctx, w, job, run, va, vb)
 }
 
 func nz(s string) string {

@@ -75,6 +75,7 @@ func (s *Session) work(ctx context.Context) error {
 }
 
 func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run) error {
+	s.logLine("worker", run.Outcome.String()+" "+run.Report)
 	act := s.Relay.OnRun(run)
 	switch act {
 	case dispatch.ActionAskSahil:

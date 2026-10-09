@@ -63,6 +63,10 @@ func Ruling(text string) string {
 	return fmt.Sprintf("Sahil has ruled:\n%s\n\nFollow up. If you agree on the plan, output the full plan block ending with AGREED.", text)
 }
 
+func SplitReview(otherName, otherText string) string {
+	return fmt.Sprintf("%s's verdict:\n%s\n\nYou may keep or change your verdict after seeing theirs. Reply with exactly one line VERDICT: PASS or VERDICT: FAIL, then at most five short bullets.", otherName, otherText)
+}
+
 func ReviewAsk(diff, verifyOut string, verifyExit int, claim string) string {
 	return fmt.Sprintf(`Worker finished. Claim (worker's claim, unverified):
 %s

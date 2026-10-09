@@ -2,14 +2,26 @@ package meeting
 
 import (
 	"context"
+	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/plan"
+	"github.com/fantastic25hippo/council-go/internal/sitlog"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
 
 // Run is the meeting: hi, greet, task, discuss, worker, review, adjourn.
 func (s *Session) Run(ctx context.Context) error {
+	if s.Log == nil && s.Cwd != "" {
+		if lg, err := sitlog.Open(s.Cwd, time.Now()); err != nil {
+			s.IO.Print("", "log: "+err.Error())
+		} else {
+			s.Log = lg
+		}
+	}
 	defer func() {
+		if s.Log != nil {
+			s.Log.Close()
+		}
 		_ = s.A.Close()
 		_ = s.B.Close()
 		_ = s.Relay.OnSIGHUP()

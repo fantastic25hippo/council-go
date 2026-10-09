@@ -47,6 +47,7 @@ func (s *Session) waitTask(ctx context.Context) error {
 				continue
 			}
 			s.ResolvedWorker = resolved
+			s.logLine("sahil", s.Task)
 			return nil
 		}
 		lines = append(lines, line)

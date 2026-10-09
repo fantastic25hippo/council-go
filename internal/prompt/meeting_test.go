@@ -22,6 +22,13 @@ func TestSystemAndGreet(t *testing.T) {
 	}
 }
 
+func TestSplitReviewNamesOther(t *testing.T) {
+	s := SplitReview("Gemini", "VERDICT: FAIL\n- tests")
+	if !strings.Contains(s, "Gemini's verdict:") || !strings.Contains(s, "VERDICT: FAIL") {
+		t.Fatalf("%q", s)
+	}
+}
+
 func TestReviewAskHasVerdictInstruction(t *testing.T) {
 	s := ReviewAsk("d", "out", 0, "claim")
 	if !strings.Contains(s, "VERDICT: PASS") || strings.Contains(s, "python3") {
