@@ -21,5 +21,6 @@
 - `internal/term`: Labeled print and Sahil prompt.
 - `internal/extract`: `IsAgreed`, `ParsePlan`, `ParseLaunch`, `ParseVerdict`. Last-line AGREED only.
 - `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed.
+- `internal/sitlog`: Sitting log keeping recent 15 meeting files.
 - `internal/boot`: Wire config, members, and workers for `cmd/council`.
 - `cmd/council`: Starts the meeting in the current directory. SIGHUP/TERM/interrupt cancels the worker.

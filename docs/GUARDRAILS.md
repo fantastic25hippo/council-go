@@ -14,6 +14,7 @@ Do not break these.
 - Strip `XAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY` from worker and member environments.
 - Council never merges to `master`. No `auto_merge`. Merging is Sahil's manual review.
 - Members stay read-only sandboxed via CLI flags.
+- Leave `logs/` untracked.
 - Do not touch grok-agy or the Python Council checkout.
 
 ## Simplicity

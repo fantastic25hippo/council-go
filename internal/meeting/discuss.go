@@ -32,6 +32,9 @@ func (s *Session) waitTask(ctx context.Context) error {
 				continue
 			}
 			s.Task = strings.Join(lines, "\n")
+			if s.Log != nil {
+				s.Log.Line("sahil", s.Task)
+			}
 			override, err := plan.ParseOverride(s.Task)
 			if err != nil {
 				s.sys(fmt.Sprintf("override parse error: %v", err))

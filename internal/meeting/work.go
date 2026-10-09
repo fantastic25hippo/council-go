@@ -75,6 +75,13 @@ func (s *Session) work(ctx context.Context) error {
 }
 
 func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run) error {
+	if s.Log != nil {
+		report := run.Report
+		if len(report) > 500 {
+			report = report[:500] + "..."
+		}
+		s.Log.Line("worker", run.Outcome.String()+": "+report)
+	}
 	act := s.Relay.OnRun(run)
 	switch act {
 	case dispatch.ActionAskSahil:

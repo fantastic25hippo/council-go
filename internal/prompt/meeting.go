@@ -87,3 +87,7 @@ func WorkerFailed(report string) string {
 func Interject(text string) string {
 	return fmt.Sprintf("Message from Sahil:\n%s", text)
 }
+
+func SplitReview(otherName, otherText string) string {
+	return fmt.Sprintf("%s's verdict:\n%s\n\nYou may keep or change your verdict after seeing theirs. Reply with exactly one line VERDICT: PASS or VERDICT: FAIL, then at most five short bullets.", otherName, otherText)
+}

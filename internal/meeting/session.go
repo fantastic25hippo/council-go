@@ -6,6 +6,7 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/member"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/relay"
+	"github.com/fantastic25hippo/council-go/internal/sitlog"
 	"github.com/fantastic25hippo/council-go/internal/state"
 	"github.com/fantastic25hippo/council-go/internal/term"
 	"github.com/fantastic25hippo/council-go/internal/worker"
@@ -21,6 +22,7 @@ type Session struct {
 	WorkerFor func(id string) worker.Worker
 	Cwd       string
 	GH        evidence.GHRunner
+	Log       *sitlog.Log
 
 	Task           string
 	ResolvedWorker string
@@ -36,9 +38,15 @@ func (s *Session) workerIDs() []string {
 }
 
 func (s *Session) sys(msg string) {
+	if s.Log != nil {
+		s.Log.Line("sys", msg)
+	}
 	s.IO.Print("", msg)
 }
 
 func (s *Session) say(m member.Member, text string) {
+	if s.Log != nil {
+		s.Log.Line("member", m.DisplayName()+": "+text)
+	}
 	s.IO.Print(m.DisplayName(), text)
 }
