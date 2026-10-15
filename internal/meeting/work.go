@@ -101,17 +101,24 @@ func (s *Session) collect(run worker.Run) worker.Evidence {
 		if gh == nil {
 			gh = evidence.DefaultGHRunner()
 		}
-		diff, _ := evidence.PRDiff(gh, run.Raw.PRURL)
-		out, err := evidence.PRChecks(gh, run.Raw.PRURL)
-		if err != nil && out == "" {
+		diff, err := evidence.PRDiff(gh, run.Raw.PRURL, s.Plan.Repo)
+		if err != nil {
+			diff = "(gh pr diff failed: " + err.Error() + ")"
+		}
+		chk, err := evidence.PRChecks(gh, run.Raw.PRURL, s.Plan.Repo)
+		out := chk.Out
+		if out == "" && err != nil {
 			out = err.Error()
 		}
-		exit := 0
-		if err != nil {
+		exit := chk.Exit
+		if err != nil && exit == 0 {
 			exit = 1
 		}
-		if diff == "" {
-			diff = run.Report
+		if chk.Pending {
+			out = "checks pending\n" + out
+		}
+		if chk.Failed && !strings.Contains(out, "checks failed") {
+			out = "checks failed\n" + out
 		}
 		return evidence.Bundle(diff, out, exit)
 	}

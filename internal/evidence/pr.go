@@ -3,6 +3,7 @@ package evidence
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // GHRunner runs a gh/git argv and returns stdout, stderr, exit, err.
@@ -10,13 +11,40 @@ type GHRunner interface {
 	Run(argv []string) (stdout, stderr string, exit int, err error)
 }
 
+// Checks holds output and status from gh pr checks.
+type Checks struct {
+	Out     string
+	Exit    int
+	Pending bool
+	Failed  bool
+}
+
+func parseRepo(pr string) string {
+	idx := strings.Index(pr, "github.com/")
+	if idx == -1 {
+		return ""
+	}
+	s := pr[idx+len("github.com/"):]
+	parts := strings.Split(s, "/")
+	if len(parts) >= 2 && parts[0] != "" && parts[1] != "" {
+		return parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+	}
+	return ""
+}
+
 // PRDiff asks the runner for: gh pr diff <pr>
-// argv must be exactly []string{"gh", "pr", "diff", pr} when pr is a number or URL.
-func PRDiff(run GHRunner, pr string) (string, error) {
+func PRDiff(run GHRunner, pr, repo string) (string, error) {
 	if pr == "" {
 		return "", errors.New("empty PR")
 	}
-	stdout, _, exit, err := run.Run([]string{"gh", "pr", "diff", pr})
+	if repo == "" {
+		repo = parseRepo(pr)
+	}
+	argv := []string{"gh", "pr", "diff", pr}
+	if repo != "" {
+		argv = append(argv, "--repo", repo)
+	}
+	stdout, _, exit, err := run.Run(argv)
 	if err != nil {
 		return "", err
 	}
@@ -27,16 +55,30 @@ func PRDiff(run GHRunner, pr string) (string, error) {
 }
 
 // PRChecks asks the runner for: gh pr checks <pr>
-func PRChecks(run GHRunner, pr string) (string, error) {
+func PRChecks(run GHRunner, pr, repo string) (Checks, error) {
 	if pr == "" {
-		return "", errors.New("empty PR")
+		return Checks{}, errors.New("empty PR")
 	}
-	stdout, _, exit, err := run.Run([]string{"gh", "pr", "checks", pr})
+	if repo == "" {
+		repo = parseRepo(pr)
+	}
+	argv := []string{"gh", "pr", "checks", pr}
+	if repo != "" {
+		argv = append(argv, "--repo", repo)
+	}
+	stdout, _, exit, err := run.Run(argv)
 	if err != nil {
-		return "", err
+		return Checks{Out: stdout, Exit: exit}, err
 	}
-	if exit != 0 {
-		return "", fmt.Errorf("gh exit %d", exit)
+	failed := false
+	if exit != 0 && exit != 8 {
+		noChecks := strings.Contains(stdout, "no checks reported") || strings.Contains(strings.ToLower(stdout), "no checks reported")
+		failed = !noChecks
 	}
-	return stdout, nil
+	return Checks{
+		Out:     stdout,
+		Exit:    exit,
+		Pending: exit == 8,
+		Failed:  failed,
+	}, nil
 }
