@@ -93,6 +93,7 @@ func (s *Session) nextTask() {
 	s.Plan = plan.Block{}
 	s.PlanText = ""
 	s.Council.FixRounds = 0
+	s.Council.Asks = 0
 	s.Council.WorkerID = ""
 	s.Council.ClearRun()
 }

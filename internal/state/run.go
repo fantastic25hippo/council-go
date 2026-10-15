@@ -17,6 +17,7 @@ type Council struct {
 	WorkerID    string
 	Handle      Handle
 	FixRounds   int
+	Asks        int
 	LastOutcome worker.Outcome
 	LastRun     worker.Run
 }
