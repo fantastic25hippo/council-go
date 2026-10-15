@@ -3,6 +3,7 @@ package agy
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 )
@@ -10,52 +11,83 @@ import (
 func (m *Member) Send(prompt string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.stdin == nil || m.reader == nil {
-		return "", fmt.Errorf("agy not started")
+
+	delay := m.hangRestartDelay
+	if delay <= 0 {
+		delay = 5 * time.Second
+	}
+
+	const maxAttempts = 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		res, timedOut, err := m.sendOnce(prompt)
+		if err != nil {
+			return "", err
+		}
+		if !timedOut {
+			return res, nil
+		}
+		_ = m.Close()
+		if attempt < maxAttempts {
+			time.Sleep(delay)
+			if err := m.Start(m.cwd); err != nil {
+				return "", err
+			}
+		}
+	}
+	return "", fmt.Errorf("agy prompt timeout")
+}
+
+func (m *Member) sendOnce(prompt string) (string, bool, error) {
+	if m.stdin == nil || m.msgs == nil {
+		return "", false, fmt.Errorf("agy not started")
 	}
 	msg, err := json.Marshal(map[string]any{
 		"event":   "user",
 		"message": map[string]string{"content": prompt},
 	})
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if _, err := fmt.Fprintf(m.stdin, "%s\n", msg); err != nil {
-		return "", err
+		return "", false, err
 	}
-	deadline := time.Now().Add(m.timeout)
+	timer := time.NewTimer(m.timeout)
+	defer timer.Stop()
 	var deltas []string
-	for time.Now().Before(deadline) {
-		line, err := readLine(m.reader, time.Until(deadline))
-		if err != nil {
-			return "", err
-		}
-		line = strings.TrimSpace(line)
-		if line == "" || !strings.HasPrefix(line, "{") {
-			continue
-		}
-		var data map[string]any
-		if err := json.Unmarshal([]byte(line), &data); err != nil {
-			continue
-		}
-		event, _ := data["event"].(string)
-		switch event {
-		case "step_update":
-			deltas = append(deltas, stepDelta(data)...)
-		case "result":
-			if err := resultErr(data); err != nil {
-				return "", err
+	for {
+		select {
+		case <-timer.C:
+			return "", true, nil
+		case line, ok := <-m.msgs:
+			if !ok {
+				return "", false, io.EOF
 			}
-			if t := resultText(data); t != "" {
-				return t, nil
+			line = strings.TrimSpace(line)
+			if line == "" || !strings.HasPrefix(line, "{") {
+				continue
 			}
-			if joined := strings.TrimSpace(strings.Join(deltas, "")); joined != "" {
-				return joined, nil
+			var data map[string]any
+			if err := json.Unmarshal([]byte(line), &data); err != nil {
+				continue
 			}
-			return "", nil
+			event, _ := data["event"].(string)
+			switch event {
+			case "step_update":
+				deltas = append(deltas, stepDelta(data)...)
+			case "result":
+				if err := resultErr(data); err != nil {
+					return "", false, err
+				}
+				if t := resultText(data); t != "" {
+					return t, false, nil
+				}
+				if joined := strings.TrimSpace(strings.Join(deltas, "")); joined != "" {
+					return joined, false, nil
+				}
+				return "", false, nil
+			}
 		}
 	}
-	return "", fmt.Errorf("agy prompt timeout")
 }
 
 func stepDelta(data map[string]any) []string {

@@ -17,21 +17,31 @@ import (
 )
 
 type Member struct {
-	cfg     cfg.Member
-	timeout time.Duration
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	reader  *bufio.Reader
-	mu      sync.Mutex
-	nextID  int
-	sid     string
+	cfg              cfg.Member
+	timeout          time.Duration
+	hangRestartDelay time.Duration
+	cmd              *exec.Cmd
+	stdin            io.WriteCloser
+	reader           *bufio.Reader
+	msgs             chan map[string]any
+	mu               sync.Mutex
+	closeMu          sync.Mutex
+	closed           bool
+	nextID           int
+	sid              string
+	cwd              string
 }
 
 func New(c cfg.Member, timeout time.Duration) *Member {
 	if timeout <= 0 {
 		timeout = 300 * time.Second
 	}
-	return &Member{cfg: c, timeout: timeout, nextID: 1}
+	return &Member{
+		cfg:              c,
+		timeout:          timeout,
+		hangRestartDelay: 5 * time.Second,
+		nextID:           1,
+	}
 }
 
 func (m *Member) ID() string { return m.cfg.ID }
@@ -65,9 +75,26 @@ func (m *Member) Start(cwd string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	m.cwd = cwd
+	m.closeMu.Lock()
 	m.cmd = cmd
 	m.stdin = in
 	m.reader = bufio.NewReader(out)
+	m.closed = false
+	m.closeMu.Unlock()
+
+	m.msgs = make(chan map[string]any, 32)
+	go func(r *bufio.Reader, ch chan map[string]any) {
+		defer close(ch)
+		for {
+			msg, err := readRPC(r)
+			if err != nil {
+				return
+			}
+			ch <- msg
+		}
+	}(m.reader, m.msgs)
+
 	if _, err := m.call("initialize", map[string]any{
 		"protocolVersion": 1,
 		"clientInfo":      map[string]string{"name": "council-go", "version": "0.1.0"},
@@ -92,13 +119,21 @@ func (m *Member) Start(cwd string) error {
 }
 
 func (m *Member) Close() error {
+	m.closeMu.Lock()
+	defer m.closeMu.Unlock()
+	if m.closed {
+		return nil
+	}
+	m.closed = true
 	if m.stdin != nil {
 		_ = m.stdin.Close()
 		m.stdin = nil
 	}
 	if m.cmd != nil {
 		_ = proc.Kill(m.cmd)
-		_, _ = m.cmd.Process.Wait()
+		if m.cmd.Process != nil {
+			_, _ = m.cmd.Process.Wait()
+		}
 		m.cmd = nil
 	}
 	return nil

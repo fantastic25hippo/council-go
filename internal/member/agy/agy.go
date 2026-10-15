@@ -1,7 +1,6 @@
 package agy
 
 import (
-	"bufio"
 	"io"
 	"os"
 	"os/exec"
@@ -16,19 +15,25 @@ import (
 )
 
 type Member struct {
-	cfg     cfg.Member
-	timeout time.Duration
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	reader  *bufio.Reader
-	mu      sync.Mutex
+	cfg              cfg.Member
+	timeout          time.Duration
+	hangRestartDelay time.Duration
+	cwd              string
+	cmd              *exec.Cmd
+	stdin            io.WriteCloser
+	msgs             chan string
+	mu               sync.Mutex
 }
 
 func New(c cfg.Member, timeout time.Duration) *Member {
 	if timeout <= 0 {
 		timeout = 300 * time.Second
 	}
-	return &Member{cfg: c, timeout: timeout}
+	return &Member{
+		cfg:              c,
+		timeout:          timeout,
+		hangRestartDelay: 5 * time.Second,
+	}
 }
 
 func (m *Member) ID() string { return m.cfg.ID }
@@ -41,6 +46,12 @@ func (m *Member) DisplayName() string {
 }
 
 func (m *Member) Start(cwd string) error {
+	if cwd != "" {
+		m.cwd = cwd
+	}
+	if m.cmd != nil || m.stdin != nil {
+		_ = m.Close()
+	}
 	cli := m.cfg.CLI
 	if cli == "" {
 		cli = "agy"
@@ -49,13 +60,13 @@ func (m *Member) Start(cwd string) error {
 		cli, "--sandbox", "--model", m.cfg.Model,
 		"--input-format", "stream-json",
 		"--output-format", "stream-json",
-		"--add-dir", cwd,
+		"--add-dir", m.cwd,
 	}
 	if m.cfg.Effort != "" {
 		argv = append(argv, "--effort", m.cfg.Effort)
 	}
 	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Dir = cwd
+	cmd.Dir = m.cwd
 	cmd.Env = config.StripForbidden(os.Environ())
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -72,7 +83,7 @@ func (m *Member) Start(cwd string) error {
 	}
 	m.cmd = cmd
 	m.stdin = in
-	m.reader = bufio.NewReader(out)
+	m.msgs = startReader(out)
 	return nil
 }
 
