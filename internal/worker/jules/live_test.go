@@ -14,10 +14,12 @@ type seqDoer struct {
 		status       int
 		body         []byte
 	}
-	i int
+	i         int
+	reqBodies [][]byte
 }
 
 func (s *seqDoer) Do(method, path string, body []byte) (int, []byte, error) {
+	s.reqBodies = append(s.reqBodies, body)
 	if s.i >= len(s.calls) {
 		return 500, []byte("extra call " + method + " " + path), nil
 	}

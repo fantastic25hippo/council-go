@@ -70,6 +70,7 @@ func (s *Session) work(ctx context.Context) error {
 		Paths:  s.Plan.OwnedPaths,
 		Verify: s.Plan.Verify,
 		Repo:   s.Plan.Repo,
+		Branch: gitstat.HeadBranch(s.Cwd),
 	}
 	return s.handleRun(ctx, w, job, w.Start(job))
 }

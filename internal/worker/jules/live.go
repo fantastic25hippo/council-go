@@ -72,7 +72,13 @@ func (l *Live) start(job worker.Job) error {
 
 	ctx := l.newCtx()
 	l.Repo = job.Repo
-	branch := l.Branch
+	branch := job.Branch
+	if branch == "" {
+		branch = l.Branch
+	}
+	if branch == "" {
+		branch = l.defaultBranch(job.Repo)
+	}
 	if branch == "" {
 		branch = "master"
 	}

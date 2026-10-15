@@ -8,6 +8,7 @@ type Job struct {
 	Paths     []string
 	Verify    string
 	Repo      string
+	Branch    string
 	SessionID string
 	PRURL     string
 }

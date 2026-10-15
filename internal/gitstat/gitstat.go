@@ -39,3 +39,12 @@ func git(dir string, args ...string) (string, error) {
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
+
+// HeadBranch returns the current branch using git -C dir rev-parse --abbrev-ref HEAD, or empty on error.
+func HeadBranch(dir string) string {
+	out, err := git(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
