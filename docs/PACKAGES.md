@@ -24,4 +24,4 @@
 - `internal/extract`: `IsAgreed`, `ParsePlan`, `ParseLaunch`, `ParseVerdict`. Last-line AGREED only.
 - `internal/gitstat`: Dirty and unpushed git state. No-upstream is unpushed. OriginRepo parses owner/repo from origin.
 - `internal/boot`: Wire config, members, and workers for `cmd/council`.
-- `cmd/council`: Starts the meeting in the current directory. SIGHUP/TERM/interrupt cancels the worker.
+- `cmd/council`: Starts the meeting in the current directory. First Ctrl-C pauses; SIGHUP, SIGTERM, or a second Ctrl-C cancel the in-flight worker.

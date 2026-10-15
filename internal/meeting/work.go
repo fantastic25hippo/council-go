@@ -72,7 +72,7 @@ func (s *Session) work(ctx context.Context) error {
 		Repo:   s.Plan.Repo,
 		Branch: gitstat.HeadBranch(s.Cwd),
 	}
-	return s.handleRun(ctx, w, job, w.Start(job))
+	return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Start(job) }))
 }
 
 func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run) error {

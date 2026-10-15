@@ -32,9 +32,9 @@ func (s *Session) startFix(ctx context.Context, w worker.Worker, job worker.Job,
 	fix := job
 	fix.Text = job.Text + "\n\nFIX:\n" + va + "\n" + vb
 	if w.Capabilities().KeepsMemoryAcrossFixes {
-		return s.handleRun(ctx, w, fix, w.Continue(job, fix.Text))
+		return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Continue(job, fix.Text) }))
 	}
-	return s.handleRun(ctx, w, fix, w.Start(fix))
+	return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Start(fix) }))
 }
 
 func (s *Session) splitOnce(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run, va, vb string) error {

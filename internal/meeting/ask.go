@@ -30,7 +30,7 @@ func (s *Session) handleAsk(ctx context.Context, w worker.Worker, job worker.Job
 	ab, okb := extract.ParseAnswer(rb)
 
 	if oka && okb && aa != "" && aa == ab {
-		return s.handleRun(ctx, w, job, w.Continue(job, aa))
+		return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, aa) }))
 	}
 
 	s.say(s.A, ra)
@@ -44,5 +44,5 @@ func (s *Session) handleAsk(ctx context.Context, w worker.Worker, job worker.Job
 		s.Council.Phase = state.PhaseAdjourn
 		return nil
 	}
-	return s.handleRun(ctx, w, job, w.Continue(job, ans))
+	return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, ans) }))
 }

@@ -39,5 +39,5 @@ func (s *Session) workAttach(ctx context.Context) error {
 
 	s.logLine("worker", "Attach start")
 
-	return s.handleRun(ctx, w, job, w.Start(job))
+	return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Start(job) }))
 }

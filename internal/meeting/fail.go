@@ -32,9 +32,9 @@ func (s *Session) handleFail(ctx context.Context, w worker.Worker, job worker.Jo
 		fix := job
 		fix.Text = job.Text + "\n\nFIX:\n" + ra + "\n" + rb
 		if w.Capabilities().KeepsMemoryAcrossFixes {
-			return s.handleRun(ctx, w, fix, w.Continue(job, fix.Text))
+			return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Continue(job, fix.Text) }))
 		}
-		return s.handleRun(ctx, w, fix, w.Start(fix))
+		return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Start(fix) }))
 	}
 
 	s.say(s.A, ra)
@@ -55,9 +55,9 @@ func (s *Session) handleFail(ctx context.Context, w worker.Worker, job worker.Jo
 	fix := job
 	fix.Text = job.Text + "\n\nFIX:\n" + ans
 	if w.Capabilities().KeepsMemoryAcrossFixes {
-		return s.handleRun(ctx, w, fix, w.Continue(job, fix.Text))
+		return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Continue(job, fix.Text) }))
 	}
-	return s.handleRun(ctx, w, fix, w.Start(fix))
+	return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Start(fix) }))
 }
 
 func lastLine(text string) string {

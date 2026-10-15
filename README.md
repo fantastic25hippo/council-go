@@ -23,7 +23,7 @@ Setting `COUNCIL_START_DIR` directly skips the folder picker.
 
 The clickable launcher is `council.desktop` in this folder. Double-click it (Allow Launching if the file manager asks). A folder picker opens; Council, Grok Build, and Agy all start in the chosen folder. Do not copy the launcher to the Desktop.
 
-Type `hi`. Paste a task, then a blank line. Dual `AGREED` plus `LAUNCH` starts one worker. SIGHUP, SIGTERM, or interrupt cancels the in-flight worker.
+Type `hi`. Paste a task, then a blank line. Dual `AGREED` plus `LAUNCH` starts one worker. First Ctrl-C pauses; SIGHUP, SIGTERM, or a second Ctrl-C cancel the in-flight worker.
 
 ## Build and test
 
