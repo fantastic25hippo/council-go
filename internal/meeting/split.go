@@ -21,20 +21,7 @@ func (s *Session) bothPass(run worker.Run) error {
 }
 
 func (s *Session) startFix(ctx context.Context, w worker.Worker, job worker.Job, va, vb string) error {
-	if s.Council.FixRounds >= s.Cfg.FixRoundsMax {
-		s.sys("Fix round cap reached.")
-		s.Council.Phase = state.PhaseTaskDone
-		return nil
-	}
-	s.Council.SetFixing()
-	s.Council.Phase = state.PhaseFixing
-	s.sys("Starting a fix round.")
-	fix := job
-	fix.Text = job.Text + "\n\nFIX:\n" + va + "\n" + vb
-	if w.Capabilities().KeepsMemoryAcrossFixes {
-		return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Continue(job, fix.Text) }))
-	}
-	return s.handleRun(ctx, w, fix, s.runWorker(ctx, func() worker.Run { return w.Start(fix) }))
+	return s.runFix(ctx, w, job, va+"\n"+vb)
 }
 
 func (s *Session) splitOnce(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run, va, vb string) error {

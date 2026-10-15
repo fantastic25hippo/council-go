@@ -75,17 +75,11 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 
 // Continue builds a continue job from the original job and runs it.
 func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
-	var keep []string
-	lines := strings.Split(job.Text, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "VERIFICATION FAILURE") || strings.Contains(line, "fix reasons") {
-			break
-		}
-		keep = append(keep, line)
+	if ar, ok := w.runner.(*AgyRunner); ok && ar.ConvID != "" {
+		job.Text = answer
+	} else {
+		job.Text = strings.TrimRight(job.Text, "\n") + "\n\nFIX/ANSWER:\n" + answer
 	}
-
-	base := strings.Join(keep, "\n")
-	job.Text = base + "\n\nANSWER:" + answer
 	return w.Start(job)
 }
 
