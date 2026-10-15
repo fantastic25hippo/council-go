@@ -53,24 +53,26 @@ func TestRelay_OnRun_Asked(t *testing.T) {
 }
 
 func TestRelay_OnRun_Failed(t *testing.T) {
-	council := &state.Council{}
-	fake := &worker.Fake{}
-	r := &Relay{
-		Council: council,
-		Worker:  fake,
-	}
+	for _, outcome := range []worker.Outcome{worker.OutcomeFailed, worker.OutcomeTimedOut} {
+		council := &state.Council{}
+		fake := &worker.Fake{}
+		r := &Relay{
+			Council: council,
+			Worker:  fake,
+		}
 
-	run := worker.Run{Outcome: worker.OutcomeFailed}
-	act := r.OnRun(run)
+		run := worker.Run{Outcome: outcome}
+		act := r.OnRun(run)
 
-	if act != dispatch.ActionFix {
-		t.Errorf("expected ActionFix, got %v", act)
-	}
-	if council.FixRounds != 1 {
-		t.Errorf("expected 1 FixRounds, got %d", council.FixRounds)
-	}
-	if council.Phase != state.PhaseFixing {
-		t.Errorf("expected PhaseFixing, got %v", council.Phase)
+		if act != dispatch.ActionFix {
+			t.Errorf("%v: expected ActionFix, got %v", outcome, act)
+		}
+		if council.FixRounds != 0 {
+			t.Errorf("%v: expected 0 FixRounds, got %d", outcome, council.FixRounds)
+		}
+		if council.Phase != state.PhaseFixing {
+			t.Errorf("%v: expected PhaseFixing, got %v", outcome, council.Phase)
+		}
 	}
 }
 

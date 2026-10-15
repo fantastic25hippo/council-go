@@ -25,7 +25,7 @@ func (r *Relay) OnRun(run worker.Run) dispatch.Action {
 	case dispatch.ActionAskSahil:
 		r.Council.SetAsked()
 	case dispatch.ActionFix:
-		r.Council.SetFixing()
+		r.Council.Phase = state.PhaseFixing
 	case dispatch.ActionCleanup:
 		r.Worker.Cancel()
 		r.Council.ClearRun()
