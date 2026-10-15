@@ -51,6 +51,10 @@ func (s *Session) Run(ctx context.Context) error {
 			if s.Council.Phase == state.PhaseAdjourn {
 				return nil
 			}
+			if s.Council.Phase == state.PhaseTaskDone {
+				s.nextTask()
+				continue
+			}
 			s.nextTask()
 			continue
 		}
@@ -60,16 +64,24 @@ func (s *Session) Run(ctx context.Context) error {
 		if s.Council.Phase == state.PhaseAdjourn {
 			return nil
 		}
+		if s.Council.Phase == state.PhaseTaskDone {
+			s.nextTask()
+			continue
+		}
 		if s.Plan.Worker == "" {
 			s.sys("No agreed plan.")
-			s.Council.Phase = state.PhaseAdjourn
-			return nil
+			s.nextTask()
+			continue
 		}
 		if err := s.work(ctx); err != nil {
 			return err
 		}
 		if s.Council.Phase == state.PhaseAdjourn {
 			return nil
+		}
+		if s.Council.Phase == state.PhaseTaskDone {
+			s.nextTask()
+			continue
 		}
 		s.nextTask()
 	}

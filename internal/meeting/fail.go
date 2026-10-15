@@ -12,8 +12,8 @@ import (
 func (s *Session) handleFail(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run) error {
 	s.sys("Worker failed.")
 	if s.Council.FixRounds >= s.Cfg.FixRoundsMax {
-		s.sys("Fix round cap reached. Adjourning.")
-		s.Council.Phase = state.PhaseAdjourn
+		s.sys("Fix round cap reached.")
+		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
 	failMsg := prompt.WorkerFailed(run.Report)

@@ -13,6 +13,7 @@ const (
 	PhaseFixing
 	PhaseVerify
 	PhaseReview
+	PhaseTaskDone
 	PhaseAdjourn
 )
 
@@ -36,6 +37,8 @@ func (p Phase) String() string {
 		return "VERIFY"
 	case PhaseReview:
 		return "REVIEW"
+	case PhaseTaskDone:
+		return "TASK_DONE"
 	case PhaseAdjourn:
 		return "ADJOURN"
 	case PhaseUnspecified:

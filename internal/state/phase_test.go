@@ -23,6 +23,7 @@ func TestPhaseString(t *testing.T) {
 		{state.PhaseFixing, "FIXING"},
 		{state.PhaseVerify, "VERIFY"},
 		{state.PhaseReview, "REVIEW"},
+		{state.PhaseTaskDone, "TASK_DONE"},
 		{state.PhaseAdjourn, "ADJOURN"},
 		{state.Phase(99), "UNSPECIFIED"},
 	}

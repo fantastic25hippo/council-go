@@ -46,20 +46,20 @@ func (s *Session) work(ctx context.Context) error {
 		dirty, unpushed, err = gitstat.State(s.Cwd)
 		if err != nil {
 			s.sys("git state: " + err.Error())
-			s.Council.Phase = state.PhaseAdjourn
+			s.Council.Phase = state.PhaseTaskDone
 			return nil
 		}
 	}
 	id, err := Prepare(s.Plan, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
 	if err != nil {
 		s.sys("Plan NACK: " + err.Error())
-		s.Council.Phase = state.PhaseAdjourn
+		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
 	w := s.WorkerFor(id)
 	if w == nil {
 		s.sys("no worker for " + id)
-		s.Council.Phase = state.PhaseAdjourn
+		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
 	s.Relay.Worker = w
@@ -85,13 +85,17 @@ func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job
 		return s.handleFail(ctx, w, job, run)
 	case dispatch.ActionCleanup:
 		s.sys("Worker cancelled.")
-		s.Council.Phase = state.PhaseAdjourn
+		if ctx.Err() != nil {
+			s.Council.Phase = state.PhaseAdjourn
+		} else {
+			s.Council.Phase = state.PhaseTaskDone
+		}
 		return nil
 	case dispatch.ActionCollectEvidence:
 		return s.review(ctx, w, job, run)
 	default:
 		s.sys("Worker hard stop.")
-		s.Council.Phase = state.PhaseAdjourn
+		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
 }

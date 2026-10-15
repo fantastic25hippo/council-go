@@ -152,7 +152,7 @@ func (s *Session) discuss(ctx context.Context) error {
 	if done, err := s.tryAgree(ctx, s.B, rb, s.A); err != nil || done {
 		return err
 	}
-	s.sys("Still no dual AGREED. Adjourning.")
-	s.Council.Phase = state.PhaseAdjourn
+	s.sys("Still no dual AGREED.")
+	s.Council.Phase = state.PhaseTaskDone
 	return nil
 }

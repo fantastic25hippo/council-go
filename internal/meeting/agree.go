@@ -85,8 +85,8 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 			}
 		}
 
-		s.sys("Members still failed to provide a valid plan. Adjourning.")
-		s.Council.Phase = state.PhaseAdjourn
+		s.sys("Members still failed to provide a valid plan.")
+		s.Council.Phase = state.PhaseTaskDone
 		return true, nil
 	}
 
