@@ -39,6 +39,7 @@ A `?` anywhere else is not a question.
 - Session `COMPLETED` → `DONE`
 - Session `AWAITING_USER_FEEDBACK` → `ASKED`
 - Session `FAILED` → `FAILED`
+- Poll timeout → `TIMED_OUT` (session may still be running; report includes session id)
 - Quit / killed → `CANCELLED`
 
 ## Interface

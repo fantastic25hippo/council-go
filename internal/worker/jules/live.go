@@ -14,6 +14,7 @@ type Live struct {
 	Client   *Client
 	Branch   string
 	Timeout  time.Duration
+	Nudge    time.Duration
 	Interval time.Duration
 	Sleep    func(time.Duration)
 	Now      func() time.Time

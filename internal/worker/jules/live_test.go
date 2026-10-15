@@ -89,6 +89,7 @@ func TestLiveIdleNudge(t *testing.T) {
 		{method: "GET", path: "/sessions/s1/activities", body: []byte(`{}`)},
 	}}
 	w := NewLive(&Client{API: api}, time.Hour)
+	w.live.Nudge = nudgeInterval
 	now := time.Unix(1000, 0)
 	w.live.Now = func() time.Time { return now }
 	w.live.Sleep = func(d time.Duration) {

@@ -6,6 +6,8 @@ debate_turns_each = 3
 fix_rounds_max = 3
 member_timeout_secs = 300
 worker_timeout_secs = 600
+jules_timeout_secs = 1800
+jules_nudge_secs = 600
 
 [[members]]
 id = "grok"

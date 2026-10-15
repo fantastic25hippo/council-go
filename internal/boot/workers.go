@@ -15,7 +15,9 @@ func makeWorkers(c cfg.Config, cwd string) func(string) worker.Worker {
 			if key == "" {
 				return nil
 			}
-			return jules.NewLive(&jules.Client{API: jules.NewHTTP(key)}, c.WorkerTimeout)
+			jw := jules.NewLive(&jules.Client{API: jules.NewHTTP(key)}, c.JulesTimeout)
+			jw.SetNudge(c.JulesNudge)
+			return jw
 		}
 		return local.New(&local.AgyRunner{
 			CLI:     localCfg.CLI,

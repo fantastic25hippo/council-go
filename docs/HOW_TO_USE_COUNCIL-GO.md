@@ -17,7 +17,7 @@ Ids `local` and `jules`. `WORKER-OVERRIDE` in the task text may be `jules`, `loc
 `JULES_API_KEY` from the environment or `~/.config/council/jules.env`. Council creates a session with `AUTO_CREATE_PR`, auto-approves a generated plan, and polls until `COMPLETED`, `FAILED`, or `AWAITING_USER_FEEDBACK`. Jules opens a PR and does not merge.
 
 # Config
-`council.toml` in the working directory, or built-in defaults if the file is missing. `COUNCIL_CONFIG` acts as the base file if set. A `council.local.toml` overlay in the start directory replaces keys/tables. Relay keys: `extra_path` (list of dirs prepended to PATH), `worker`, `check_unpushed`, `debate_turns_each`, `fix_rounds_max`, `member_timeout_secs`, `worker_timeout_secs`. Member keys: `id`, `display_name`, `driver`, `cli`, `model`, `effort`. Worker keys: `id`, `display_name`, `driver`, `cli`, `model`.
+`council.toml` in the working directory, or built-in defaults if the file is missing. `COUNCIL_CONFIG` acts as the base file if set. A `council.local.toml` overlay in the start directory replaces keys/tables. Relay keys: `extra_path` (list of dirs prepended to PATH), `worker`, `check_unpushed`, `debate_turns_each`, `fix_rounds_max`, `member_timeout_secs`, `worker_timeout_secs`, `jules_timeout_secs`, `jules_nudge_secs`. Member keys: `id`, `display_name`, `driver`, `cli`, `model`, `effort`. Worker keys: `id`, `display_name`, `driver`, `cli`, `model`.
 
 # Hard constraints
 Go 1.22+, no `.go` file over 200 lines, never use pay-per-token API keys, never merge to `master`, members stay read-only sandboxed, leave untracked `hook.log` `council-meeting.log` `council-selfreview.md` `council-jules-async.md` and `logs/` alone.

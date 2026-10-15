@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var ErrPollTimeout = errors.New("jules poll timed out")
+
 func (l *Live) poll(ctx context.Context) error {
 	if l.sess == nil {
 		return errors.New("empty session id")
@@ -18,6 +20,10 @@ func (l *Live) poll(ctx context.Context) error {
 	interval := l.Interval
 	if interval <= 0 {
 		interval = pollInterval
+	}
+	nudgeWait := l.Nudge
+	if nudgeWait <= 0 {
+		nudgeWait = 600 * time.Second
 	}
 	nowFn := l.Now
 	if nowFn == nil {
@@ -85,7 +91,7 @@ func (l *Live) poll(ctx context.Context) error {
 			return nil
 		}
 
-		if now.Sub(lastActivity) >= nudgeInterval {
+		if st == "IN_PROGRESS" && now.Sub(lastActivity) >= nudgeWait {
 			if err := l.Client.Send(l.sess.SID, nudgeText); err == nil {
 				lastActivity = now
 			}
@@ -97,5 +103,5 @@ func (l *Live) poll(ctx context.Context) error {
 			return context.Canceled
 		}
 	}
-	return errors.New("jules poll timed out")
+	return ErrPollTimeout
 }

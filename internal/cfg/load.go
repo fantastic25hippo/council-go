@@ -36,22 +36,18 @@ func applyFile(c *Config, path string, replaceTables bool) error {
 				section = "relay"
 			case line == "[[members]]":
 				section = "members"
-				if !sawMembers {
-					if replaceTables {
-						c.Members = nil
-					}
-					sawMembers = true
+				if !sawMembers && replaceTables {
+					c.Members = nil
 				}
+				sawMembers = true
 				c.Members = append(c.Members, Member{})
 				curMember = &c.Members[len(c.Members)-1]
 			case line == "[[workers]]":
 				section = "workers"
-				if !sawWorkers {
-					if replaceTables {
-						c.Workers = nil
-					}
-					sawWorkers = true
+				if !sawWorkers && replaceTables {
+					c.Workers = nil
 				}
+				sawWorkers = true
 				c.Workers = append(c.Workers, Worker{})
 				curWorker = &c.Workers[len(c.Workers)-1]
 			default:
@@ -76,17 +72,10 @@ func applyFile(c *Config, path string, replaceTables bool) error {
 			}
 		}
 	}
+	clampJules(c)
 	return sc.Err()
 }
 
-func expandPath(p string) string {
-	if strings.HasPrefix(p, "~") {
-		if home, err := os.UserHomeDir(); err == nil {
-			p = home + p[1:]
-		}
-	}
-	return os.ExpandEnv(p)
-}
 
 // LoadDir loads the config from cwd, respecting COUNCIL_CONFIG and council.local.toml.
 func LoadDir(cwd string) (Config, error) {
@@ -112,14 +101,8 @@ func LoadDir(cwd string) (Config, error) {
 	if err := applyFile(&c, localPath, true); err != nil {
 		return c, err
 	}
-
-	if len(c.Members) == 0 {
-		c.Members = Defaults().Members
-	}
-	if len(c.Workers) == 0 {
-		c.Workers = Defaults().Workers
-	}
-
+	clampJules(&c)
+	ensureTables(&c)
 	return c, nil
 }
 
@@ -127,27 +110,21 @@ func LoadDir(cwd string) (Config, error) {
 func Load(path string) (Config, error) {
 	c := Defaults()
 	err := applyFile(&c, path, true)
-	if len(c.Members) == 0 {
-		c.Members = Defaults().Members
-	}
-	if len(c.Workers) == 0 {
-		c.Workers = Defaults().Workers
-	}
+	ensureTables(&c)
 	return c, err
 }
+
 
 func splitKV(line string) (string, string, bool) {
 	idx := strings.Index(line, "=")
 	if idx <= 0 {
 		return "", "", false
 	}
-	k := strings.TrimSpace(line[:idx])
 	v := strings.TrimSpace(line[idx+1:])
 	if i := strings.Index(v, " #"); i >= 0 {
 		v = strings.TrimSpace(v[:i])
 	}
-	v = strings.Trim(v, `"`)
-	return k, v, true
+	return strings.TrimSpace(line[:idx]), strings.Trim(v, `"`), true
 }
 
 func parseArray(s string) []string {
@@ -161,19 +138,12 @@ func parseArray(s string) []string {
 	if s == "" {
 		return nil
 	}
-	parts := strings.Split(s, ",")
 	var res []string
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		p = strings.Trim(p, "\"'")
-		if p != "" {
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.Trim(strings.TrimSpace(p), "\"'"); p != "" {
 			res = append(res, p)
 		}
 	}
 	return res
 }
-
 

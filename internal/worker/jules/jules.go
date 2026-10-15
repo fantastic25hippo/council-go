@@ -3,6 +3,7 @@ package jules
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
@@ -39,6 +40,9 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 			if errors.Is(err, context.Canceled) {
 				return worker.Run{Outcome: worker.OutcomeCancelled, Report: "cancelled"}
 			}
+			if errors.Is(err, ErrPollTimeout) {
+				return w.timedOutRun(err)
+			}
 			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
 		}
 		w.sess = w.live.session()
@@ -54,6 +58,9 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 		if err := w.live.answer(answer); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return worker.Run{Outcome: worker.OutcomeCancelled, Report: "cancelled"}
+			}
+			if errors.Is(err, ErrPollTimeout) {
+				return w.timedOutRun(err)
 			}
 			return worker.Run{Outcome: worker.OutcomeFailed, Report: err.Error()}
 		}
@@ -105,4 +112,34 @@ func (w *Worker) Cancel() error {
 		w.live.cancel()
 	}
 	return nil
+}
+
+func (w *Worker) SetNudge(d time.Duration) {
+	if w.live != nil {
+		w.live.Nudge = d
+	}
+}
+
+func (w *Worker) timedOutRun(err error) worker.Run {
+	var sid, prURL string
+	if w.live != nil && w.live.sess != nil {
+		sid = w.live.sess.SID
+		prURL = w.live.sess.PRURL()
+		w.sess = w.live.sess
+	}
+	report := err.Error()
+	if sid != "" {
+		report += ": session " + sid
+	}
+	if prURL != "" {
+		report += ", PR: " + prURL
+	}
+	return worker.Run{
+		Outcome: worker.OutcomeTimedOut,
+		Report:  report,
+		Raw: worker.Raw{
+			SessionID: sid,
+			PRURL:     prURL,
+		},
+	}
 }

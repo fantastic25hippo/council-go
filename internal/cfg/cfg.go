@@ -3,7 +3,6 @@ package cfg
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -32,6 +31,8 @@ type Config struct {
 	FixRoundsMax    int
 	MemberTimeout   time.Duration
 	WorkerTimeout   time.Duration
+	JulesTimeout    time.Duration
+	JulesNudge      time.Duration
 	ExtraPath       []string
 	Members         []Member
 	Workers         []Worker
@@ -45,6 +46,8 @@ func Defaults() Config {
 		FixRoundsMax:    3,
 		MemberTimeout:   300 * time.Second,
 		WorkerTimeout:   600 * time.Second,
+		JulesTimeout:    1800 * time.Second,
+		JulesNudge:      600 * time.Second,
 		ExtraPath:       []string{"~/.grok/bin", "~/.local/bin"},
 		Members: []Member{
 			{ID: "grok", DisplayName: "Grok", Driver: "grok-acp", CLI: "grok", Model: "grok-4.6", Effort: "high"},
@@ -63,33 +66,6 @@ func (c Config) MemberIDs() []string {
 		out = append(out, m.ID)
 	}
 	return out
-}
-
-func applyRelay(c *Config, k, v string) {
-	switch k {
-	case "worker":
-		c.Worker = v
-	case "extra_path":
-		c.ExtraPath = parseArray(v)
-	case "check_unpushed":
-		c.CheckUnpushed = v == "true"
-	case "debate_turns_each":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.DebateTurnsEach = n
-		}
-	case "fix_rounds_max":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.FixRoundsMax = n
-		}
-	case "member_timeout_secs":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.MemberTimeout = time.Duration(n) * time.Second
-		}
-	case "worker_timeout_secs":
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			c.WorkerTimeout = time.Duration(n) * time.Second
-		}
-	}
 }
 
 func applyMember(m *Member, k, v string) {
@@ -182,4 +158,13 @@ func (c Config) WorkerIDs() []string {
 		out = append(out, w.ID)
 	}
 	return out
+}
+
+func expandPath(p string) string {
+	if strings.HasPrefix(p, "~") {
+		if home, err := os.UserHomeDir(); err == nil {
+			p = home + p[1:]
+		}
+	}
+	return os.ExpandEnv(p)
 }
