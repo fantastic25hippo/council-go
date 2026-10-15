@@ -37,7 +37,7 @@ func (s *Session) handleAsk(ctx context.Context, w worker.Worker, job worker.Job
 	s.say(s.B, rb)
 
 	if oka && okb && aa != "" && strings.EqualFold(normalize(aa), normalize(ab)) {
-		return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, aa) }))
+		return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, "ANSWER: "+aa) }))
 	}
 
 	ans, err := s.readSahil(ctx, "Sahil> ")
@@ -48,5 +48,5 @@ func (s *Session) handleAsk(ctx context.Context, w worker.Worker, job worker.Job
 		s.Council.Phase = state.PhaseAdjourn
 		return nil
 	}
-	return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, ans) }))
+	return s.handleRun(ctx, w, job, s.runWorker(ctx, func() worker.Run { return w.Continue(job, "ANSWER: "+ans) }))
 }

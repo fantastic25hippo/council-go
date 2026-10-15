@@ -36,7 +36,7 @@ func TestAskedMembersAgree(t *testing.T) {
 		Next: worker.Run{Outcome: worker.OutcomeAsked, Question: "which branch?"},
 	}
 	fakeW.HandleContinue = func(job worker.Job, ans string) worker.Run {
-		if ans != "master" {
+		if strings.TrimPrefix(ans, "ANSWER: ") != "master" {
 			t.Errorf("expected master, got %s", ans)
 		}
 		return worker.Run{Outcome: worker.OutcomeDone, Report: "did it"}
@@ -85,7 +85,7 @@ func TestAskedMembersDisagree(t *testing.T) {
 		Next: worker.Run{Outcome: worker.OutcomeAsked, Question: "which branch?"},
 	}
 	fakeW.HandleContinue = func(job worker.Job, ans string) worker.Run {
-		if ans != "use theirs" {
+		if strings.TrimPrefix(ans, "ANSWER: ") != "use theirs" {
 			t.Errorf("expected use theirs, got %s", ans)
 		}
 		return worker.Run{Outcome: worker.OutcomeDone, Report: "did it"}

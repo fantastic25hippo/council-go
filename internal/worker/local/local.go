@@ -78,7 +78,7 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 	if ar, ok := w.runner.(*AgyRunner); ok && ar.ConvID != "" {
 		job.Text = answer
 	} else {
-		job.Text = strings.TrimRight(job.Text, "\n") + "\n\nFIX/ANSWER:\n" + answer
+		job.Text = strings.TrimRight(job.Text, "\n") + "\n\n" + answer
 	}
 	return w.Start(job)
 }

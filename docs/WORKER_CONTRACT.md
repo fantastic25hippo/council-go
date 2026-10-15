@@ -55,5 +55,5 @@ Cancel() error
 
 ## Answers vs fixes
 
-- An **answer** is `Continue` after `ASKED`. It is never labelled a verification failure.
-- A **fix** is a new `Start` with the plan plus failure reasons after `FAILED` / `TIMED_OUT`.
+- An **answer** is `Continue` after `ASKED`, labelled `ANSWER:`. It is never labelled a verification failure.
+- A **fix** is `Continue` when `KeepsMemoryAcrossFixes` is true, otherwise a new `Start`. Label it `FIX:` / `FIX ROUND n:` plus failure reasons after FAILED/TIMED_OUT.

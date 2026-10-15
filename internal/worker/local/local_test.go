@@ -100,8 +100,8 @@ func TestWorker_Continue(t *testing.T) {
 
 	w.Continue(originalJob, "my answer")
 
-	if !strings.Contains(runner.job.Text, "FIX/ANSWER:") || !strings.Contains(runner.job.Text, "my answer") {
-		t.Errorf("Expected Text to contain FIX/ANSWER: and answer, got '%v'", runner.job.Text)
+	if !strings.Contains(runner.job.Text, "my answer") {
+		t.Errorf("Expected Text to contain answer, got '%v'", runner.job.Text)
 	}
 }
 
