@@ -33,7 +33,7 @@ func TestFallbackPR(t *testing.T) {
 			repo:          "test/repo",
 			stdout:        `[{"url":"https://github.com/test/repo/pull/1","title":"test pr"}]`,
 			exit:          0,
-			expectedPRURL: "https://github.com/test/repo/pull/1",
+			expectedPRURL: "",
 		},
 		{
 			name:          "No open PRs",
@@ -81,11 +81,33 @@ func TestFallbackPR(t *testing.T) {
 			exit:          0,
 			expectedPRURL: "",
 		},
+		{
+			name:          "Match body",
+			repo:          "test/repo",
+			stdout:        `[{"url":"https://github.com/test/repo/pull/1","headRefName":"main","body":"See https://jules.google.com/session/sess99"}]`,
+			exit:          0,
+			expectedPRURL: "https://github.com/test/repo/pull/1",
+		},
+		{
+			name:          "Match branch suffix",
+			repo:          "test/repo",
+			stdout:        `[{"url":"https://github.com/test/repo/pull/2","headRefName":"jules-sess99","body":""}]`,
+			exit:          0,
+			expectedPRURL: "https://github.com/test/repo/pull/2",
+		},
+		{
+			name:          "Multiple one matches",
+			repo:          "test/repo",
+			stdout:        `[{"url":"https://github.com/test/repo/pull/1","headRefName":"main","body":""},{"url":"https://github.com/test/repo/pull/9","headRefName":"work-sess99","body":""}]`,
+			exit:          0,
+			expectedPRURL: "https://github.com/test/repo/pull/9",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sess := &APISession{info: SessionInfo{}}
+			sess.SID = "sess99"
 			runner := &fakeGHRunner{
 				stdout: tt.stdout,
 				exit:   tt.exit,
@@ -105,7 +127,7 @@ func TestFallbackPR(t *testing.T) {
 			}
 
 			if tt.repo != "" && runner.lastArgv != nil {
-				expectedArgv := []string{"gh", "pr", "list", "--repo", tt.repo, "--state", "open", "--json", "url,title", "--limit", "5"}
+				expectedArgv := []string{"gh", "pr", "list", "--repo", tt.repo, "--state", "open", "--json", "url,headRefName,body"}
 				if !reflect.DeepEqual(runner.lastArgv, expectedArgv) {
 					t.Errorf("expected argv %v, got %v", expectedArgv, runner.lastArgv)
 				}

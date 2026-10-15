@@ -2,6 +2,7 @@ package jules
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type GHRunner interface {
@@ -9,24 +10,35 @@ type GHRunner interface {
 }
 
 func (l *Live) fallbackPR() {
-	if l.Runner == nil || l.Repo == "" {
+	if l.Runner == nil || l.Repo == "" || l.sess == nil || l.sess.SID == "" {
 		return
 	}
-
-	stdout, _, exit, err := l.Runner.Run([]string{"gh", "pr", "list", "--repo", l.Repo, "--state", "open", "--json", "url,title", "--limit", "5"})
+	sid := l.sess.SID
+	stdout, _, exit, err := l.Runner.Run([]string{"gh", "pr", "list", "--repo", l.Repo, "--state", "open", "--json", "url,headRefName,body"})
 	if err != nil || exit != 0 {
 		return
 	}
-
 	var prs []struct {
-		URL   string `json:"url"`
-		Title string `json:"title"`
+		URL         string `json:"url"`
+		HeadRefName string `json:"headRefName"`
+		Body        string `json:"body"`
 	}
-	if err := json.Unmarshal([]byte(stdout), &prs); err != nil {
+	if json.Unmarshal([]byte(stdout), &prs) != nil {
 		return
 	}
-
-	if len(prs) == 1 && prs[0].URL != "" {
-		l.sess.SetPRURL(prs[0].URL)
+	id := strings.ToLower(sid)
+	for _, pr := range prs {
+		if pr.URL == "" {
+			continue
+		}
+		body := strings.ToLower(pr.Body)
+		if strings.Contains(body, "jules.google.com") && strings.Contains(body, id) {
+			l.sess.SetPRURL(pr.URL)
+			return
+		}
+		if strings.HasSuffix(strings.ToLower(pr.HeadRefName), "-"+id) {
+			l.sess.SetPRURL(pr.URL)
+			return
+		}
 	}
 }
