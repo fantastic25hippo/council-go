@@ -3,6 +3,8 @@ package jules
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -84,9 +86,17 @@ func (l *Live) poll(ctx context.Context) error {
 		}
 
 		switch st {
-		case "COMPLETED", "FAILED", "AWAITING_USER_FEEDBACK":
+		case "COMPLETED", "FAILED", "AWAITING_USER_FEEDBACK", "PAUSED", "CANCELLED":
 			if st == "COMPLETED" && l.sess.PRURL() == "" {
 				l.fallbackPR()
+			}
+			if st == "PAUSED" {
+				msg := "Jules session is PAUSED; resume or answer it on jules.google.com"
+				if l.warn != nil {
+					l.warn(msg)
+				} else {
+					fmt.Fprintln(os.Stderr, msg)
+				}
 			}
 			return nil
 		}

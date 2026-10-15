@@ -24,6 +24,7 @@ type Live struct {
 	approved bool
 	ctx      context.Context
 	cancel   context.CancelFunc
+	warn     func(string)
 }
 
 func NewLive(c *Client, timeout time.Duration) *Worker {
@@ -101,4 +102,3 @@ func (l *Live) answer(text string) error {
 	}
 	return l.poll(ctx)
 }
-
