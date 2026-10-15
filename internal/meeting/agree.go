@@ -12,23 +12,23 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
 
-func (s *Session) tryAgree(ctx context.Context, first member.Member, text string, second member.Member) (bool, error) {
+func (s *Session) tryAgree(ctx context.Context, first member.Member, text string, second member.Member) (done bool, secondText string, err error) {
 	if !extract.IsAgreed(text) {
-		return false, nil
+		return false, "", nil
 	}
 	p, ok := extract.ParsePlan(text)
 	if !ok {
 		nack, err := first.Send(prompt.NackPlan(s.workerIDs()))
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
 		s.say(first, nack)
 		if !extract.IsAgreed(nack) {
-			return false, nil
+			return false, "", nil
 		}
 		p, ok = extract.ParsePlan(nack)
 		if !ok {
-			return false, nil
+			return false, "", nil
 		}
 		text = nack
 	}
@@ -37,21 +37,23 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 	s.Council.Phase = state.PhaseWaitAgreed
 	conf, err := second.Send(prompt.Confirm(first.DisplayName(), text, p.Worker))
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	s.say(second, conf)
+	secondText = conf
 	if !extract.IsAgreed(conf) {
-		return false, nil
+		return false, conf, nil
 	}
 	launch := extract.ParseLaunch(conf)
 	if launch != p.Worker {
 		ln, err := second.Send(prompt.LaunchNack(p.Worker))
 		if err != nil {
-			return false, err
+			return false, secondText, err
 		}
 		s.say(second, ln)
+		secondText = ln
 		if !extract.IsAgreed(ln) || extract.ParseLaunch(ln) != p.Worker {
-			return false, nil
+			return false, ln, nil
 		}
 	}
 
@@ -62,7 +64,7 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 		if stErr != nil {
 			s.sys("git state: " + stErr.Error())
 			s.Council.Phase = state.PhaseTaskDone
-			return true, nil
+			return true, secondText, nil
 		}
 	}
 	_, err = Prepare(s.Plan, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
@@ -70,20 +72,20 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 		if errors.Is(err, gate.ErrUnpushed) || errors.Is(err, gate.ErrDirty) {
 			s.sys("Commit/push first: " + err.Error())
 			s.Council.Phase = state.PhaseTaskDone
-			return true, nil
+			return true, secondText, nil
 		}
 		s.sys("Plan NACK: " + err.Error())
 
 		nackMsg := prompt.NackPlanReason(s.workerIDs(), err.Error())
 		nackA, errA := s.A.Send(nackMsg)
 		if errA != nil {
-			return false, errA
+			return false, secondText, errA
 		}
 		s.say(s.A, nackA)
 
 		nackB, errB := s.B.Send(nackMsg)
 		if errB != nil {
-			return false, errB
+			return false, secondText, errB
 		}
 		s.say(s.B, nackB)
 
@@ -99,20 +101,20 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 						s.sys(pErr.Error())
 					}
 					s.Council.Phase = state.PhaseTaskDone
-					return true, nil
+					return true, secondText, nil
 				}
 				s.Plan = pA
 				s.PlanText = nackA
 				s.sys("Dual AGREED.")
-				return true, nil
+				return true, secondText, nil
 			}
 		}
 
 		s.sys("Members still failed to provide a valid plan.")
 		s.Council.Phase = state.PhaseTaskDone
-		return true, nil
+		return true, secondText, nil
 	}
 
 	s.sys("Dual AGREED.")
-	return true, nil
+	return true, secondText, nil
 }

@@ -90,11 +90,15 @@ func (s *Session) discuss(ctx context.Context) error {
 	s.say(s.A, ra)
 	s.say(s.B, rb)
 	latestA, latestB := ra, rb
-	if done, err := s.tryAgree(ctx, s.A, ra, s.B); err != nil || done {
+	if done, sec, err := s.tryAgree(ctx, s.A, ra, s.B); err != nil || done {
 		return err
+	} else if sec != "" {
+		latestB = sec
 	}
-	if done, err := s.tryAgree(ctx, s.B, rb, s.A); err != nil || done {
+	if done, sec, err := s.tryAgree(ctx, s.B, rb, s.A); err != nil || done {
 		return err
+	} else if sec != "" {
+		latestA = sec
 	}
 	cap := s.Cfg.DebateTurnsEach
 	if cap <= 0 {
@@ -107,8 +111,10 @@ func (s *Session) discuss(ctx context.Context) error {
 		}
 		s.say(s.A, ta)
 		latestA = ta
-		if done, err := s.tryAgree(ctx, s.A, ta, s.B); err != nil || done {
+		if done, sec, err := s.tryAgree(ctx, s.A, ta, s.B); err != nil || done {
 			return err
+		} else if sec != "" {
+			latestB = sec
 		}
 		tb, err := s.B.Send(prompt.Debate(s.A.DisplayName(), latestA))
 		if err != nil {
@@ -116,8 +122,10 @@ func (s *Session) discuss(ctx context.Context) error {
 		}
 		s.say(s.B, tb)
 		latestB = tb
-		if done, err := s.tryAgree(ctx, s.B, tb, s.A); err != nil || done {
+		if done, sec, err := s.tryAgree(ctx, s.B, tb, s.A); err != nil || done {
 			return err
+		} else if sec != "" {
+			latestA = sec
 		}
 	}
 	s.sys(fmt.Sprintf("Debate cap reached. Disputed points go to Sahil."))
@@ -146,11 +154,15 @@ func (s *Session) discuss(ctx context.Context) error {
 	}
 	s.say(s.A, ra)
 	s.say(s.B, rb)
-	if done, err := s.tryAgree(ctx, s.A, ra, s.B); err != nil || done {
+	if done, sec, err := s.tryAgree(ctx, s.A, ra, s.B); err != nil || done {
 		return err
+	} else if sec != "" {
+		latestB = sec
 	}
-	if done, err := s.tryAgree(ctx, s.B, rb, s.A); err != nil || done {
+	if done, sec, err := s.tryAgree(ctx, s.B, rb, s.A); err != nil || done {
 		return err
+	} else if sec != "" {
+		latestA = sec
 	}
 	s.sys("Still no dual AGREED.")
 	s.Council.Phase = state.PhaseTaskDone
