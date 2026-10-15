@@ -55,18 +55,24 @@ func (s *Session) splitOnce(ctx context.Context, w worker.Worker, job worker.Job
 	if pa == "FAIL" && pb == "FAIL" {
 		return s.startFix(ctx, w, job, nva, nvb)
 	}
-	return s.splitAskSahil(ctx, w, job)
+	return s.splitAskSahil(ctx, w, job, run, nva, nvb)
 }
 
-func (s *Session) splitAskSahil(ctx context.Context, w worker.Worker, job worker.Job) error {
-	s.sys("Split verdicts. Type a ruling, or quit.")
+func (s *Session) splitAskSahil(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run, va, vb string) error {
+	s.sys("Split verdicts. Type pass, fail, a fix instruction, or quit.")
 	ans, err := s.readSahil(ctx, "Sahil> ")
 	if err != nil {
 		return err
 	}
-	if q := strings.ToLower(strings.TrimSpace(ans)); q == "quit" || q == "exit" {
+	switch strings.ToLower(strings.TrimSpace(ans)) {
+	case "pass":
+		return s.bothPass(run)
+	case "fail":
+		return s.startFix(ctx, w, job, va, vb)
+	case "quit", "exit":
 		s.Council.Phase = state.PhaseAdjourn
 		return nil
+	default:
+		return s.startFix(ctx, w, job, ans, ans)
 	}
-	return s.startFix(ctx, w, job, ans, ans)
 }
