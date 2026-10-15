@@ -2,8 +2,10 @@ package meeting
 
 import (
 	"context"
+	"errors"
 
 	"github.com/fantastic25hippo/council-go/internal/extract"
+	"github.com/fantastic25hippo/council-go/internal/gate"
 	"github.com/fantastic25hippo/council-go/internal/gitstat"
 	"github.com/fantastic25hippo/council-go/internal/member"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
@@ -55,13 +57,24 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 
 	dirty, unpushed := false, false
 	if s.Cfg.CheckUnpushed {
-		dirty, unpushed, _ = gitstat.State(s.Cwd)
+		var stErr error
+		dirty, unpushed, stErr = gitstat.State(s.Cwd)
+		if stErr != nil {
+			s.sys("git state: " + stErr.Error())
+			s.Council.Phase = state.PhaseTaskDone
+			return true, nil
+		}
 	}
 	_, err = Prepare(s.Plan, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
 	if err != nil {
+		if errors.Is(err, gate.ErrUnpushed) || errors.Is(err, gate.ErrDirty) {
+			s.sys("Commit/push first: " + err.Error())
+			s.Council.Phase = state.PhaseTaskDone
+			return true, nil
+		}
 		s.sys("Plan NACK: " + err.Error())
 
-		nackMsg := prompt.NackPlan(s.workerIDs())
+		nackMsg := prompt.NackPlanReason(s.workerIDs(), err.Error())
 		nackA, errA := s.A.Send(nackMsg)
 		if errA != nil {
 			return false, errA
@@ -78,6 +91,16 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 			pA, okA := extract.ParsePlan(nackA)
 			pB, okB := extract.ParsePlan(nackB)
 			if okA && okB && pA.Worker == s.ResolvedWorker && pB.Worker == s.ResolvedWorker {
+				_, pErr := Prepare(pA, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
+				if pErr != nil {
+					if errors.Is(pErr, gate.ErrUnpushed) || errors.Is(pErr, gate.ErrDirty) {
+						s.sys("Commit/push first: " + pErr.Error())
+					} else {
+						s.sys(pErr.Error())
+					}
+					s.Council.Phase = state.PhaseTaskDone
+					return true, nil
+				}
 				s.Plan = pA
 				s.PlanText = nackA
 				s.sys("Dual AGREED.")

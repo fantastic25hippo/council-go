@@ -45,3 +45,10 @@ func TestProposalHasResolvedWorker(t *testing.T) {
 		t.Fatalf("expected capabilities strings in %q", s)
 	}
 }
+
+func TestNackPlanReason(t *testing.T) {
+	s := NackPlanReason([]string{"local", "jules"}, "protected path overlap")
+	if !strings.Contains(s, "protected path overlap") || !strings.Contains(s, "local, jules") || !strings.Contains(s, "Resend the full plan") {
+		t.Fatalf("unexpected NackPlanReason: %q", s)
+	}
+}

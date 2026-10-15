@@ -51,6 +51,14 @@ func NackPlan(workerIDs []string) string {
 	return fmt.Sprintf("AGREED was detected, but the plan block was missing or invalid. Workers: %s. Resend the full plan ending with AGREED.", ids)
 }
 
+func NackPlanReason(ids []string, reason string) string {
+	workerList := strings.Join(ids, ", ")
+	if reason != "" {
+		return fmt.Sprintf("AGREED was detected, but the plan block was missing or invalid: %s. Workers: %s. Resend the full plan ending with AGREED.", reason, workerList)
+	}
+	return fmt.Sprintf("AGREED was detected, but the plan block was missing or invalid. Workers: %s. Resend the full plan ending with AGREED.", workerList)
+}
+
 func LaunchNack(worker string) string {
 	return fmt.Sprintf("You agreed, but did not include a valid launch command. Reply with:\nLAUNCH: %s\nAGREED", worker)
 }

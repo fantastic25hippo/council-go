@@ -7,6 +7,11 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
+var (
+	ErrUnpushed = errors.New("unpushed changes")
+	ErrDirty    = errors.New("dirty working tree")
+)
+
 var Protected = []string{
 	"hook.log",
 	"council-meeting.log",
@@ -37,10 +42,10 @@ func GitHubReady(caps worker.Capabilities, dirty, unpushed bool) error {
 		return nil
 	}
 	if unpushed {
-		return errors.New("unpushed changes")
+		return ErrUnpushed
 	}
 	if dirty {
-		return errors.New("dirty working tree")
+		return ErrDirty
 	}
 	return nil
 }
