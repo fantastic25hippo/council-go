@@ -1,6 +1,7 @@
 package jules
 
 import (
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func (b *blockingPollDoer) Do(method, path string, body []byte) (int, []byte, er
 	if method == "GET" && path == "/sessions/s1" {
 		return 200, []byte(`{"id":"s1","state":"IN_PROGRESS"}`), nil
 	}
-	if method == "GET" && path == "/sessions/s1/activities" {
+	if method == "GET" && strings.HasPrefix(path, "/sessions/s1/activities") {
 		b.once.Do(func() {
 			close(b.inPoll)
 		})

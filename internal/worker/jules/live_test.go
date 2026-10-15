@@ -28,7 +28,7 @@ func (s *seqDoer) Do(method, path string, body []byte) (int, []byte, error) {
 	if c.method != "" && c.method != method {
 		return 500, []byte("want " + c.method + " got " + method), nil
 	}
-	if c.path != "" && c.path != path {
+	if c.path != "" && c.path != path && !strings.HasPrefix(path, c.path+"?") {
 		return 500, []byte("want " + c.path + " got " + path), nil
 	}
 	st := c.status

@@ -52,7 +52,14 @@ func (l *Live) poll(ctx context.Context) error {
 		if err := l.sess.Refresh(); err != nil {
 			return err
 		}
-		sum, _ := l.Client.Activities(l.sess.SID)
+		sum, actErr := l.Client.Activities(l.sess.SID)
+		if actErr != nil {
+			if l.warn != nil {
+				l.warn("jules activities: " + actErr.Error())
+			} else {
+				fmt.Fprintln(os.Stderr, "jules activities:", actErr)
+			}
+		}
 
 		activityDetected := false
 
