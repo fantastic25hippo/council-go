@@ -68,13 +68,14 @@ func sendBoth(ctx context.Context, a, b member.Member, pa, pb string) (ra, rb st
 		t, e := b.Send(pb)
 		ch <- result{who: "b", txt: t, err: e}
 	}()
+	var firstErr error
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			return "", "", ctx.Err()
+			return ra, rb, ctx.Err()
 		case r := <-ch:
-			if r.err != nil {
-				return "", "", r.err
+			if r.err != nil && firstErr == nil {
+				firstErr = r.err
 			}
 			if r.who == "a" {
 				ra = r.txt
@@ -83,5 +84,5 @@ func sendBoth(ctx context.Context, a, b member.Member, pa, pb string) (ra, rb st
 			}
 		}
 	}
-	return ra, rb, nil
+	return ra, rb, firstErr
 }
