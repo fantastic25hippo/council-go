@@ -6,12 +6,10 @@ import (
 	"strings"
 
 	"github.com/fantastic25hippo/council-go/internal/dispatch"
-	"github.com/fantastic25hippo/council-go/internal/evidence"
 	"github.com/fantastic25hippo/council-go/internal/gitstat"
 	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
 	"github.com/fantastic25hippo/council-go/internal/state"
-	"github.com/fantastic25hippo/council-go/internal/verify"
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
@@ -98,50 +96,4 @@ func (s *Session) handleRun(ctx context.Context, w worker.Worker, job worker.Job
 		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
-}
-
-func (s *Session) collect(run worker.Run) worker.Evidence {
-	if run.Raw.PRURL != "" {
-		gh := s.GH
-		if gh == nil {
-			gh = evidence.DefaultGHRunner()
-		}
-		diff, err := evidence.PRDiff(gh, run.Raw.PRURL, s.Plan.Repo)
-		if err != nil {
-			diff = "(gh pr diff failed: " + err.Error() + ")"
-		}
-		chk, err := evidence.PRChecks(gh, run.Raw.PRURL, s.Plan.Repo)
-		out := chk.Out
-		if out == "" && err != nil {
-			out = err.Error()
-		}
-		exit := chk.Exit
-		if err != nil && exit == 0 {
-			exit = 1
-		}
-		if chk.Pending {
-			out = "checks pending\n" + out
-		}
-		if chk.Failed && !strings.Contains(out, "checks failed") {
-			out = "checks failed\n" + out
-		}
-		return evidence.Bundle(diff, out, exit)
-	}
-
-	diff, _ := evidence.LocalDiff(s.Cwd, s.Plan.OwnedPaths)
-	secs := int(s.Cfg.WorkerTimeout.Seconds())
-	if secs <= 0 {
-		secs = 60
-	}
-	out, exit, err := verify.Run(s.Cwd, s.Plan.Verify, secs)
-	if err != nil && out == "" {
-		out = err.Error()
-		if exit == 0 {
-			exit = 1
-		}
-	}
-	if diff == "" {
-		diff = run.Report
-	}
-	return evidence.Bundle(diff, out, exit)
 }
