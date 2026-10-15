@@ -88,7 +88,11 @@ func (m *Member) call(method string, params any) (map[string]any, error) {
 	if err := writeRPC(m.stdin, map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params}); err != nil {
 		return nil, err
 	}
-	timer := time.NewTimer(m.timeout)
+	timeout := m.timeout
+	if timeout < 5*time.Second {
+		timeout = 5 * time.Second
+	}
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	for {
