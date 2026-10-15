@@ -96,7 +96,12 @@ func (w *Worker) mapStateToRun() worker.Run {
 }
 
 func (w *Worker) Cancel() error {
-	if w.live != nil && w.live.cancel != nil {
+	if w.live == nil {
+		return nil
+	}
+	w.live.mu.Lock()
+	defer w.live.mu.Unlock()
+	if w.live.cancel != nil {
 		w.live.cancel()
 	}
 	return nil

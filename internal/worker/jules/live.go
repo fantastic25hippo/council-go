@@ -3,13 +3,14 @@ package jules
 import (
 	"context"
 	"errors"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
 type Live struct {
+	mu       sync.Mutex
 	Client   *Client
 	Branch   string
 	Timeout  time.Duration
@@ -39,19 +40,26 @@ func NewLive(c *Client, timeout time.Duration) *Worker {
 
 func (l *Live) session() Session { return l.sess }
 
+func (l *Live) newCtx() context.Context {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.ctx, l.cancel = context.WithCancel(context.Background())
+	return l.ctx
+}
+
 func (l *Live) start(job worker.Job) error {
 	if l.Client == nil {
 		return errors.New("jules client missing")
 	}
 	if job.SessionID != "" {
-		l.ctx, l.cancel = context.WithCancel(context.Background())
+		ctx := l.newCtx()
 		l.Repo = job.Repo
 		l.sess = &APISession{C: l.Client, SID: job.SessionID}
 		if job.PRURL != "" {
 			l.sess.SetPRURL(job.PRURL)
 		}
 		l.approved = false
-		err := l.poll()
+		err := l.poll(ctx)
 		if l.sess != nil && l.sess.PRURL() == "" && job.PRURL != "" {
 			l.sess.SetPRURL(job.PRURL)
 		}
@@ -61,7 +69,7 @@ func (l *Live) start(job worker.Job) error {
 		return errors.New("empty REPO")
 	}
 
-	l.ctx, l.cancel = context.WithCancel(context.Background())
+	ctx := l.newCtx()
 	l.Repo = job.Repo
 	branch := l.Branch
 	if branch == "" {
@@ -73,109 +81,17 @@ func (l *Live) start(job worker.Job) error {
 	}
 	l.sess = &APISession{C: l.Client, SID: id}
 	l.approved = false
-	return l.poll()
+	return l.poll(ctx)
 }
 
 func (l *Live) answer(text string) error {
 	if l.sess == nil || l.sess.SID == "" {
 		return errors.New("empty session id")
 	}
-	l.ctx, l.cancel = context.WithCancel(context.Background())
+	ctx := l.newCtx()
 	if err := l.Client.Send(l.sess.SID, text); err != nil {
 		return err
 	}
-	return l.poll()
+	return l.poll(ctx)
 }
 
-func (l *Live) poll() error {
-	if l.sess == nil {
-		return errors.New("empty session id")
-	}
-	sleep := l.Sleep
-	if sleep == nil {
-		sleep = time.Sleep
-	}
-	interval := l.Interval
-	if interval <= 0 {
-		interval = pollInterval
-	}
-	nowFn := l.Now
-	if nowFn == nil {
-		nowFn = time.Now
-	}
-	deadline := nowFn().Add(l.Timeout)
-
-	// Ensure the client has retries.
-	if l.Client != nil && l.Client.API != nil {
-		l.Client.API = WithRetries(l.Client.API, sleep)
-	}
-
-	lastActivity := nowFn()
-	var lastAgentMsg string
-	var lastState string
-
-	for nowFn().Before(deadline) {
-		if l.ctx != nil && l.ctx.Err() != nil {
-			return context.Canceled
-		}
-
-		now := nowFn()
-
-		if err := l.sess.Refresh(); err != nil {
-			return err
-		}
-		sum, _ := l.Client.Activities(l.sess.SID)
-
-		activityDetected := false
-
-		if sum.LastAgent != "" {
-			l.sess.SetMessage(sum.LastAgent)
-			if sum.LastAgent != lastAgentMsg {
-				// Head-change wake:
-				// If silent for >= headChangeQuiet, treat as activity
-				if now.Sub(lastActivity) >= headChangeQuiet {
-					activityDetected = true
-				}
-				lastAgentMsg = sum.LastAgent
-			}
-		}
-
-		st := strings.ToUpper(l.sess.State())
-		if st != lastState {
-			activityDetected = true
-			lastState = st
-		}
-
-		if activityDetected {
-			lastActivity = now
-		}
-
-		if !l.approved && (sum.PlanGenerated || strings.Contains(st, "PLAN")) {
-			if err := l.Client.ApprovePlan(l.sess.SID); err == nil {
-				l.approved = true
-				lastActivity = now
-			}
-		}
-
-		switch st {
-		case "COMPLETED", "FAILED", "AWAITING_USER_FEEDBACK":
-			if st == "COMPLETED" && l.sess.PRURL() == "" {
-				l.fallbackPR()
-			}
-			return nil
-		}
-
-		if now.Sub(lastActivity) >= nudgeInterval {
-			if err := l.Client.Send(l.sess.SID, nudgeText); err == nil {
-				lastActivity = now
-			}
-		}
-
-		select {
-		case <-time.After(interval):
-		case <-l.ctx.Done():
-			return context.Canceled
-		}
-	}
-	return errors.New("jules poll timed out")
-}
