@@ -41,19 +41,13 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 	if m.stdin == nil || m.msgs == nil {
 		return "", false, fmt.Errorf("agy not started")
 	}
-	msg, err := json.Marshal(map[string]any{
-		"event":   "user",
-		"message": map[string]string{"content": prompt},
-	})
-	if err != nil {
-		return "", false, err
-	}
-	if _, err := fmt.Fprintf(m.stdin, "%s\n", msg); err != nil {
+	if err := writeUser(m.stdin, prompt); err != nil {
 		return "", false, err
 	}
 	timer := time.NewTimer(m.timeout)
 	defer timer.Stop()
 	var deltas []string
+	continues := 0
 	for {
 		select {
 		case <-timer.C:
@@ -76,7 +70,22 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 				deltas = append(deltas, stepDelta(data)...)
 			case "result":
 				if err := resultErr(data); err != nil {
-					return "", false, err
+					if !isStreamInterrupt(err) {
+						return "", false, err
+					}
+					if partial := joinResult(data, deltas); partial != "" {
+						return partial, false, nil
+					}
+					if continues >= maxStreamContinues {
+						return "", false, err
+					}
+					continues++
+					if werr := writeUser(m.stdin, streamContinuePrompt); werr != nil {
+						return "", false, err
+					}
+					timer.Reset(m.timeout)
+					deltas = deltas[:0]
+					continue
 				}
 				if t := resultText(data); t != "" {
 					return t, false, nil

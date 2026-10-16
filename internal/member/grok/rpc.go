@@ -14,7 +14,8 @@ func writeRPC(w io.Writer, msg any) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, "Content-Length: %d\r\n\r\n%s", len(body), body)
+	// grok agent stdio speaks NDJSON; it rejects Content-Length framing.
+	_, err = fmt.Fprintf(w, "%s\n", body)
 	return err
 }
 
