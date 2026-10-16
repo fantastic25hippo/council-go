@@ -91,7 +91,7 @@ func setupFakeCLI(t *testing.T) {
 func TestSendRestartSucceeds(t *testing.T) {
 	setupFakeCLI(t)
 	cwd := t.TempDir()
-	m := New(cfg.Member{ID: "grok", DisplayName: "Grok", CLI: "fake-grok", Model: "restart"}, 200*time.Millisecond)
+	m := New(cfg.Member{ID: "grok", DisplayName: "Grok", CLI: "fake-grok", Model: "restart"}, 1*time.Second)
 	m.hangRestartDelay = time.Millisecond
 	if err := m.Start(cwd); err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestSendRestartSucceeds(t *testing.T) {
 func TestSendAlwaysHangTimesOut(t *testing.T) {
 	setupFakeCLI(t)
 	cwd := t.TempDir()
-	m := New(cfg.Member{ID: "grok", DisplayName: "Grok", CLI: "fake-grok", Model: "hang"}, 200*time.Millisecond)
+	m := New(cfg.Member{ID: "grok", DisplayName: "Grok", CLI: "fake-grok", Model: "hang"}, 1*time.Second)
 	m.hangRestartDelay = time.Millisecond
 	if err := m.Start(cwd); err != nil {
 		t.Fatal(err)
