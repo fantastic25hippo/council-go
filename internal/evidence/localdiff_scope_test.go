@@ -120,3 +120,41 @@ func TestLocalDiff_DoesNotChangeGitStatus(t *testing.T) {
 		t.Errorf("expected git status to remain unchanged. Before:\n%s\nAfter:\n%s", string(statusBefore), string(statusAfter))
 	}
 }
+
+func TestLocalDiff_OwnedWithDotSlash(t *testing.T) {
+	dir := setupGitRepo(t)
+
+	err := os.Mkdir(filepath.Join(dir, "owned"), 0755)
+	if err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	filePath := filepath.Join(dir, "owned", "file.txt")
+	err = os.WriteFile(filePath, []byte("initial\n"), 0644)
+	if err != nil {
+		t.Fatalf("write file failed: %v", err)
+	}
+
+	cmd := exec.Command("git", "-C", dir, "add", "owned/file.txt")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git add failed: %v", err)
+	}
+
+	cmd = exec.Command("git", "-C", dir, "commit", "-m", "initial commit")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git commit failed: %v", err)
+	}
+
+	err = os.WriteFile(filePath, []byte("modified\n"), 0644)
+	if err != nil {
+		t.Fatalf("write file failed: %v", err)
+	}
+
+	diff, err := LocalDiff(dir, []string{"./owned"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if strings.Contains(diff, "Files changed outside OWNED_PATHS") {
+		t.Errorf("expected owned path './owned' to match changes without 'outside OWNED_PATHS' warning, got:\n%s", diff)
+	}
+}
