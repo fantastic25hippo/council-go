@@ -89,6 +89,7 @@ func runGit(dir string, args ...string) (string, error) {
 func pathOwned(path string, owned []string) bool {
 	path = strings.TrimPrefix(path, "./")
 	for _, o := range owned {
+		o = strings.TrimPrefix(o, "./")
 		o = strings.TrimSuffix(o, "/")
 		if path == o || strings.HasPrefix(path, o+"/") {
 			return true
