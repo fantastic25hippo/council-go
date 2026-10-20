@@ -115,6 +115,7 @@ func (s *Session) discuss(ctx context.Context) error {
 			return err
 		} else if sec != "" {
 			latestB = sec
+			continue
 		}
 		tb, err := s.B.Send(prompt.Debate(s.A.DisplayName(), latestA))
 		if err != nil {
