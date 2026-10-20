@@ -99,3 +99,51 @@ func TestAgySendAlwaysHang(t *testing.T) {
 		t.Fatalf("expected 3 runs (1 initial + 2 restarts), got %d", len(lines))
 	}
 }
+
+func TestBuildArgv(t *testing.T) {
+	c := cfg.Member{
+		ID:     "gemini",
+		CLI:    "my-agy",
+		Model:  "gemini-pro",
+		Effort: "high",
+	}
+	cwd := "/path/to/workdir"
+	argv := buildArgv(c, cwd)
+
+	expected := []string{
+		"my-agy",
+		"--sandbox",
+		"--mode", "plan",
+		"--dangerously-skip-permissions",
+		"--model", "gemini-pro",
+		"--input-format", "stream-json",
+		"--output-format", "stream-json",
+		"--add-dir", "/path/to/workdir",
+		"--effort", "high",
+	}
+
+	joined := strings.Join(argv, " ")
+	for _, flag := range []string{
+		"--sandbox",
+		"--mode plan",
+		"--dangerously-skip-permissions",
+		"--model gemini-pro",
+		"--input-format stream-json",
+		"--output-format stream-json",
+		"--add-dir /path/to/workdir",
+		"--effort high",
+	} {
+		if !strings.Contains(joined, flag) {
+			t.Fatalf("argv %v missing %q", argv, flag)
+		}
+	}
+
+	if len(argv) != len(expected) {
+		t.Fatalf("got argv %v, want %v", argv, expected)
+	}
+	for i := range expected {
+		if argv[i] != expected[i] {
+			t.Fatalf("argv[%d] = %q, want %q", i, argv[i], expected[i])
+		}
+	}
+}

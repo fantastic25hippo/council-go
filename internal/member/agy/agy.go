@@ -45,6 +45,24 @@ func (m *Member) DisplayName() string {
 	return m.cfg.ID
 }
 
+func buildArgv(c cfg.Member, cwd string) []string {
+	cli := c.CLI
+	if cli == "" {
+		cli = "agy"
+	}
+	argv := []string{
+		cli, "--sandbox", "--mode", "plan", "--dangerously-skip-permissions",
+		"--model", c.Model,
+		"--input-format", "stream-json",
+		"--output-format", "stream-json",
+		"--add-dir", cwd,
+	}
+	if c.Effort != "" {
+		argv = append(argv, "--effort", c.Effort)
+	}
+	return argv
+}
+
 func (m *Member) Start(cwd string) error {
 	if cwd != "" {
 		m.cwd = cwd
@@ -52,19 +70,7 @@ func (m *Member) Start(cwd string) error {
 	if m.cmd != nil || m.stdin != nil {
 		_ = m.Close()
 	}
-	cli := m.cfg.CLI
-	if cli == "" {
-		cli = "agy"
-	}
-	argv := []string{
-		cli, "--sandbox", "--model", m.cfg.Model,
-		"--input-format", "stream-json",
-		"--output-format", "stream-json",
-		"--add-dir", m.cwd,
-	}
-	if m.cfg.Effort != "" {
-		argv = append(argv, "--effort", m.cfg.Effort)
-	}
+	argv := buildArgv(m.cfg, m.cwd)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = m.cwd
 	cmd.Env = config.StripForbidden(os.Environ())

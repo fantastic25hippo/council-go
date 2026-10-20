@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 )
@@ -87,13 +88,25 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 					deltas = deltas[:0]
 					continue
 				}
-				if t := resultText(data); t != "" {
-					return t, false, nil
+				origText := resultText(data)
+				if origText == "" {
+					origText = strings.TrimSpace(strings.Join(deltas, ""))
 				}
-				if joined := strings.TrimSpace(strings.Join(deltas, "")); joined != "" {
-					return joined, false, nil
+				denied := parseDeniedActions(data)
+				if origText == "" && len(denied) == 0 && strings.EqualFold(resultStatus(data), "SUCCESS") {
+					return "", false, fmt.Errorf("agy returned an empty response")
 				}
-				return "", false, nil
+				text := origText
+				if len(denied) > 0 {
+					line := fmt.Sprintf("[council: agy denied: %s]", strings.Join(denied, ", "))
+					fmt.Fprintln(os.Stderr, line)
+					if text != "" {
+						text = text + "\n" + line
+					} else {
+						text = line
+					}
+				}
+				return text, false, nil
 			}
 		}
 	}
@@ -135,4 +148,40 @@ func resultErr(data map[string]any) error {
 		msg = "unknown agy error"
 	}
 	return fmt.Errorf("agy stream-json error: %s", msg)
+}
+
+func parseDeniedActions(data map[string]any) []string {
+	res, _ := data["result"].(map[string]any)
+	if res == nil {
+		return nil
+	}
+	actions, ok := res["denied_actions"].([]any)
+	if !ok || len(actions) == 0 {
+		return nil
+	}
+	var names []string
+	for _, a := range actions {
+		switch v := a.(type) {
+		case map[string]any:
+			if dn, ok := v["display_name"].(string); ok && dn != "" {
+				names = append(names, dn)
+			} else if n, ok := v["name"].(string); ok && n != "" {
+				names = append(names, n)
+			}
+		case string:
+			if v != "" {
+				names = append(names, v)
+			}
+		}
+	}
+	return names
+}
+
+func resultStatus(data map[string]any) string {
+	res, _ := data["result"].(map[string]any)
+	if res == nil {
+		return ""
+	}
+	s, _ := res["status"].(string)
+	return s
 }
