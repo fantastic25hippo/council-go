@@ -153,8 +153,11 @@ func addDirs(cwd string, paths []string) []string {
 			abs = filepath.Join(cwd, p)
 		}
 		fi, err := os.Stat(abs)
-		if err != nil || !fi.IsDir() {
+		if err != nil {
 			continue
+		}
+		if !fi.IsDir() {
+			abs = filepath.Dir(abs)
 		}
 		add(abs)
 	}

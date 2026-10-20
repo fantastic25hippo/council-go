@@ -125,6 +125,35 @@ func TestWorkerStartTimeoutOutcome(t *testing.T) {
 	}
 }
 
+func TestAgyRunnerArgvFilePaths(t *testing.T) {
+	dir := t.TempDir()
+	subdir := filepath.Join(dir, "sub")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(subdir, "file.go")
+	if err := os.WriteFile(filePath, []byte("// test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	docsDir := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(docsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &AgyRunner{CLI: "agy", Cwd: dir}
+	argv := r.argv(worker.Job{Text: "hello", Paths: []string{"sub/file.go", "docs"}})
+
+	foundSub := false
+	for i, a := range argv {
+		if a == "--add-dir" && i+1 < len(argv) && argv[i+1] == subdir {
+			foundSub = true
+		}
+	}
+	if !foundSub {
+		t.Fatalf("argv missing --add-dir for file parent dir %q in %v", subdir, argv)
+	}
+}
+
 type timeoutRunner struct{}
 
 func (timeoutRunner) Run(worker.Job) (string, string, int, error) {
