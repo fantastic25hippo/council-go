@@ -118,6 +118,12 @@ func TestAskedCapReached(t *testing.T) {
 	if fakeW.Continues != 5 {
 		t.Fatalf("expected 5 continues, got %d", fakeW.Continues)
 	}
+	if fakeW.Cancels != 2 {
+		t.Fatalf("expected 2 cancels, got %d", fakeW.Cancels)
+	}
+	if !council.Handle.Zero() {
+		t.Fatalf("expected handle to be zero after ClearRun")
+	}
 	if !strings.Contains(out.String(), "Ask cap reached.") {
 		t.Fatalf("missing 'Ask cap reached.' in output: %s", out.String())
 	}

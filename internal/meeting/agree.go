@@ -3,11 +3,14 @@ package meeting
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 
 	"github.com/fantastic25hippo/council-go/internal/extract"
 	"github.com/fantastic25hippo/council-go/internal/gate"
 	"github.com/fantastic25hippo/council-go/internal/gitstat"
 	"github.com/fantastic25hippo/council-go/internal/member"
+	"github.com/fantastic25hippo/council-go/internal/plan"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
@@ -92,29 +95,73 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 		if extract.IsAgreed(nackA) && extract.IsAgreed(nackB) {
 			pA, okA := extract.ParsePlan(nackA)
 			pB, okB := extract.ParsePlan(nackB)
-			if okA && okB && pA.Worker == s.ResolvedWorker && pB.Worker == s.ResolvedWorker {
-				_, pErr := Prepare(pA, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
-				if pErr != nil {
-					if errors.Is(pErr, gate.ErrUnpushed) || errors.Is(pErr, gate.ErrDirty) {
-						s.sys("Commit/push first: " + pErr.Error())
-					} else {
-						s.sys(pErr.Error())
+			if okA && okB {
+				_, pErrA := Prepare(pA, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
+				if pErrA != nil {
+					if errors.Is(pErrA, gate.ErrUnpushed) || errors.Is(pErrA, gate.ErrDirty) {
+						s.sys("Commit/push first: " + pErrA.Error())
+						s.Council.Phase = state.PhaseTaskDone
+						return true, secondText, nil
 					}
-					s.Council.Phase = state.PhaseTaskDone
-					return true, secondText, nil
+					s.sys(pErrA.Error())
 				}
-				s.Plan = pA
-				s.PlanText = nackA
+				_, pErrB := Prepare(pB, s.ResolvedWorker, capsFor(s.ResolvedWorker), dirty, unpushed)
+				if pErrB != nil {
+					if errors.Is(pErrB, gate.ErrUnpushed) || errors.Is(pErrB, gate.ErrDirty) {
+						s.sys("Commit/push first: " + pErrB.Error())
+						s.Council.Phase = state.PhaseTaskDone
+						return true, secondText, nil
+					}
+					s.sys(pErrB.Error())
+				}
+				if pErrA == nil && pErrB == nil && plansEqual(pA, pB) {
+					s.Plan = pA
+					s.PlanText = nackA
 				s.sys("Dual AGREED.")
 				return true, secondText, nil
+				}
 			}
 		}
 
 		s.sys("Members still failed to provide a valid plan.")
-		s.Council.Phase = state.PhaseTaskDone
-		return true, secondText, nil
+		return false, secondText, nil
 	}
 
 	s.sys("Dual AGREED.")
 	return true, secondText, nil
+}
+
+func plansEqual(a, b plan.Block) bool {
+	if !strings.EqualFold(normalize(a.Worker), normalize(b.Worker)) {
+		return false
+	}
+	if normalize(a.Change) != normalize(b.Change) {
+		return false
+	}
+	if normalize(a.Verify) != normalize(b.Verify) {
+		return false
+	}
+	return equalNormalizedPaths(a.OwnedPaths, b.OwnedPaths)
+}
+
+func equalNormalizedPaths(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	na := make([]string, len(a))
+	for i, p := range a {
+		na[i] = normalize(p)
+	}
+	nb := make([]string, len(b))
+	for i, p := range b {
+		nb[i] = normalize(p)
+	}
+	sort.Strings(na)
+	sort.Strings(nb)
+	for i := range na {
+		if na[i] != nb[i] {
+			return false
+		}
+	}
+	return true
 }

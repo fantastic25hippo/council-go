@@ -109,3 +109,52 @@ func TestLaunchNACK(t *testing.T) {
 		t.Fatalf("expected some prompt in a.Sent to contain %q, got: %q", "OBJECTION-LAUNCH", a.Sent)
 	}
 }
+
+
+func TestDebateBRejectsAPlan(t *testing.T) {
+	a := &member.Fake{Name: "grok", Shown: "Grok", Replies: []string{
+		"Hello, I am Grok.",
+		"I suggest we discuss",
+		agreedPlan(),
+		"A debate turn 2",
+		"disputed",
+	}}
+	b := &member.Fake{Name: "gemini", Shown: "Gemini", Replies: []string{
+		"Hello, I am Gemini.",
+		"I suggest we debate",
+		"OBJECTION-DEBATE: approach is completely flawed",
+		"B debate turn 2",
+		"disputed",
+	}}
+	fakeW := &worker.Fake{
+		Caps: worker.Capabilities{TouchesLocalCheckout: true, CanAskAndWait: true},
+	}
+	var out bytes.Buffer
+	council := &state.Council{}
+	s := &meeting.Session{
+		Cfg:     cfg.Config{CheckUnpushed: false, DebateTurnsEach: 2, FixRoundsMax: 3, Worker: "local"},
+		A:       a,
+		B:       b,
+		IO:      &term.IO{In: strings.NewReader("hi\nfix the foo\n\nquit\n"), Out: &out},
+		Council: council,
+		Relay:   &relay.Relay{Council: council, Worker: fakeW},
+		WorkerFor: func(id string) worker.Worker {
+			return fakeW
+		},
+		Cwd: t.TempDir(),
+	}
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	found := false
+	for _, p := range a.Sent {
+		if strings.Contains(p, "OBJECTION-DEBATE: approach is completely flawed") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected some prompt in a.Sent to contain B's rejection text, got: %q", a.Sent)
+	}
+}

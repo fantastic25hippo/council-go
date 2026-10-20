@@ -17,6 +17,10 @@ func normalize(s string) string {
 func (s *Session) handleAsk(ctx context.Context, w worker.Worker, job worker.Job, run worker.Run) error {
 	if s.Council.Asks >= 5 {
 		s.sys("Ask cap reached.")
+		if w != nil {
+			_ = w.Cancel()
+		}
+		s.Council.ClearRun()
 		s.Council.Phase = state.PhaseTaskDone
 		return nil
 	}
