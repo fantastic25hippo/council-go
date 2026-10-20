@@ -91,7 +91,7 @@ func pathOwned(path string, owned []string) bool {
 	for _, o := range owned {
 		o = strings.TrimPrefix(o, "./")
 		o = strings.TrimSuffix(o, "/")
-		if path == o || strings.HasPrefix(path, o+"/") {
+		if o == "." || o == "" || path == o || strings.HasPrefix(path, o+"/") {
 			return true
 		}
 	}

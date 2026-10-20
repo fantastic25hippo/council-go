@@ -3,8 +3,11 @@ package verify
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/fantastic25hippo/council-go/internal/config"
 )
 
 // CheckSyntax runs `bash -n -c cmd`. Nonzero exit is an error containing "VERIFY".
@@ -31,6 +34,7 @@ func Run(dir, cmd string, timeoutSecs int) (output string, exit int, err error) 
 
 	c := exec.Command(argv[0], argv[1:]...)
 	c.Dir = dir
+	c.Env = config.StripForbidden(os.Environ())
 	out, runErr := c.CombinedOutput()
 	output = string(out)
 
