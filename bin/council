@@ -104,7 +104,7 @@ if [ -n "${COUNCIL_START_DIR:-}" ]; then
   run_here "$resolved_dir" "$@"
 fi
 
-if [ ! -p /dev/stdin ] && have_gui_picker; then
+if [ ! -t 0 ] && [ ! -p /dev/stdin ] && have_gui_picker; then
   prefill="${PWD:-$HOME}"
   while true; do
     set +e

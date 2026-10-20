@@ -35,3 +35,26 @@ func TestController_OnSIGINT(t *testing.T) {
 		t.Errorf("expected Already paused..., got %q", got)
 	}
 }
+
+func TestClearPauseResetsLastSIGINT(t *testing.T) {
+	c := pause.New()
+	currentTime := time.Now()
+	c.SetClock(func() time.Time {
+		return currentTime
+	})
+
+	// First press pauses
+	if got := c.OnSIGINT(); got != "pause" {
+		t.Fatalf("expected pause, got %q", got)
+	}
+
+	c.ClearPause()
+
+	// Within 3 seconds of the first press
+	currentTime = currentTime.Add(1 * time.Second)
+
+	// After ClearPause, a single SIGINT must pause, not quit
+	if got := c.OnSIGINT(); got != "pause" {
+		t.Fatalf("expected pause after ClearPause, got %q", got)
+	}
+}

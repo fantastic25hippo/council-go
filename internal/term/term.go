@@ -44,15 +44,19 @@ func (t *IO) start() {
 			for {
 				if t.In == nil {
 					t.lines <- readResult{err: io.EOF}
+					close(t.lines)
 					return
 				}
 				line, err := t.reader().ReadString('\n')
 				if err != nil && len(line) == 0 {
 					t.lines <- readResult{err: err}
+					close(t.lines)
 					return
 				}
 				t.lines <- readResult{line: strings.TrimRight(line, "\r\n")}
 				if err != nil {
+					t.lines <- readResult{err: err}
+					close(t.lines)
 					return
 				}
 			}
@@ -98,7 +102,10 @@ func (t *IO) read(ctx context.Context, prompt string, interruptible bool) (strin
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
-		case res := <-t.lines:
+		case res, ok := <-t.lines:
+			if !ok {
+				return "", io.EOF
+			}
 			return res.line, res.err
 		case <-ticker.C:
 			if interruptible && t.Pause != nil && t.Pause.IsPaused() {

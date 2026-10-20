@@ -31,8 +31,10 @@ if [ -n "${COUNCIL_TMUX_SESSION:-}" ] && command -v tmux >/dev/null 2>&1; then
     exit 0
 fi
 
-# Fallback to graphical terminals
-if command -v gnome-terminal >/dev/null 2>&1; then
+# In a terminal: run in place. Otherwise fallback to graphical terminals.
+if [ -t 0 ]; then
+    exec env COUNCIL_START_DIR="$folder" "$COUNCIL_LAUNCHER"
+elif command -v gnome-terminal >/dev/null 2>&1; then
     exec gnome-terminal --title='Council' --working-directory="$folder" -- \
         bash -lc 'COUNCIL_START_DIR="$0" "$1"; echo; read -r -p "Press Enter to close" _' \
         "$folder" "$COUNCIL_LAUNCHER"
