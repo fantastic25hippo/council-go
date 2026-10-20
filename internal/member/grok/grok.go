@@ -98,7 +98,13 @@ func (m *Member) Start(cwd string) error {
 	if _, err := m.call("initialize", map[string]any{
 		"protocolVersion": 1,
 		"clientInfo":      map[string]string{"name": "council-go", "version": "0.1.0"},
-		"capabilities":    map[string]any{},
+		"clientCapabilities": map[string]any{
+			"fs": map[string]any{
+				"readTextFile":  true,
+				"writeTextFile": false,
+			},
+			"terminal": false,
+		},
 	}); err != nil {
 		m.Close()
 		return err

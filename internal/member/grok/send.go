@@ -2,7 +2,6 @@ package grok
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"time"
 )
@@ -61,7 +60,7 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 			method, _ := msg["method"].(string)
 			id := msg["id"]
 			if method != "" && id != nil && fmt.Sprint(id) != fmt.Sprint(req) {
-				deny(m.stdin, id)
+				handleRequest(m.stdin, msg, m.cwd)
 				continue
 			}
 			if method == "session/update" {
@@ -102,7 +101,7 @@ func (m *Member) call(method string, params any) (map[string]any, error) {
 			methodName, _ := msg["method"].(string)
 			mid := msg["id"]
 			if methodName != "" && mid != nil && fmt.Sprint(mid) != fmt.Sprint(id) {
-				deny(m.stdin, mid)
+				handleRequest(m.stdin, msg, m.cwd)
 				continue
 			}
 			if fmt.Sprint(mid) == fmt.Sprint(id) {
@@ -119,12 +118,6 @@ func (m *Member) call(method string, params any) (map[string]any, error) {
 	}
 }
 
-func deny(w io.Writer, id any) {
-	_ = writeRPC(w, map[string]any{
-		"jsonrpc": "2.0", "id": id,
-		"result": map[string]any{"outcome": "cancelled", "allowed": false, "reason": "Council member is read-only."},
-	})
-}
 
 func chunkText(u map[string]any) string {
 	if c, ok := u["content"].(map[string]any); ok {
