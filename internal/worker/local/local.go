@@ -16,9 +16,10 @@ type Runner interface {
 
 // Worker is the implementation of worker.Worker.
 type Worker struct {
-	runner Runner
-	mu     sync.Mutex
-	cmd    *exec.Cmd
+	runner   Runner
+	mu       sync.Mutex
+	cmd      *exec.Cmd
+	canceled bool
 }
 
 // New creates a new Worker.
@@ -39,6 +40,10 @@ func (w *Worker) Capabilities() worker.Capabilities {
 
 // Start initiates a job using the Runner.
 func (w *Worker) Start(job worker.Job) worker.Run {
+	w.mu.Lock()
+	w.canceled = false
+	w.mu.Unlock()
+
 	stdout, stderr, exit, err := w.runner.Run(job)
 
 	r := worker.Run{
@@ -47,6 +52,27 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 			Stdout:   stdout,
 			Stderr:   stderr,
 		},
+	}
+
+	w.mu.Lock()
+	canceled := w.canceled
+	w.mu.Unlock()
+	if !canceled {
+		if c, ok := w.runner.(interface{ IsCanceled() bool }); ok && c.IsCanceled() {
+			canceled = true
+		}
+	}
+
+	if canceled {
+		r.Outcome = worker.OutcomeCancelled
+		if err != nil {
+			r.Report = err.Error()
+		} else if stdout != "" {
+			r.Report = stdout
+		} else {
+			r.Report = "cancelled"
+		}
+		return r
 	}
 
 	if err != nil {
@@ -86,15 +112,18 @@ func (w *Worker) Continue(job worker.Job, answer string) worker.Run {
 // Cancel cancels the local worker.
 func (w *Worker) Cancel() error {
 	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.canceled = true
+	cmd := w.cmd
+	w.cmd = nil
+	runner := w.runner
+	w.mu.Unlock()
 
 	var err error
-	if w.cmd != nil {
-		err = proc.Kill(w.cmd)
-		w.cmd = nil
+	if cmd != nil {
+		err = proc.Kill(cmd)
 	}
 
-	if canceler, ok := w.runner.(interface{ Cancel() error }); ok {
+	if canceler, ok := runner.(interface{ Cancel() error }); ok {
 		if cancelErr := canceler.Cancel(); cancelErr != nil {
 			if err == nil {
 				err = cancelErr

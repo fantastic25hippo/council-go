@@ -27,8 +27,9 @@ type AgyRunner struct {
 	Cwd     string
 	Timeout time.Duration
 	ConvID  string
-	mu      sync.Mutex
-	cmd     *exec.Cmd
+	mu       sync.Mutex
+	cmd      *exec.Cmd
+	canceled bool
 }
 
 func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
@@ -45,6 +46,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 	}
 	r.mu.Lock()
 	r.cmd = cmd
+	r.canceled = false
 	r.mu.Unlock()
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -71,7 +73,6 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 		outText := stdout.String()
 		var js map[string]interface{}
 		if json.Unmarshal([]byte(outText), &js) == nil {
-			// Find conversation_id
 			if cid, ok := js["conversation_id"].(string); ok && cid != "" {
 				r.ConvID = cid
 			} else if res, ok := js["result"].(map[string]interface{}); ok {
@@ -79,17 +80,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 					r.ConvID = cid
 				}
 			}
-
-			// Find response
-			if resp, ok := js["response"].(string); ok {
-				outText = resp
-			} else if res, ok := js["result"].(map[string]interface{}); ok {
-				if resp, ok := res["response"].(string); ok {
-					outText = resp
-				}
-			} else if resStr, ok := js["result"].(string); ok {
-				outText = resStr
-			}
+			outText = parseReport(js, outText, stderr.String())
 		}
 
 		return outText, stderr.String(), exit, nil
@@ -106,12 +97,19 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 func (r *AgyRunner) Cancel() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.canceled = true
 	if r.cmd == nil {
 		return nil
 	}
 	err := proc.Kill(r.cmd)
 	r.cmd = nil
 	return err
+}
+
+func (r *AgyRunner) IsCanceled() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.canceled
 }
 
 func (r *AgyRunner) argv(job worker.Job) []string {
@@ -132,6 +130,7 @@ func (r *AgyRunner) argv(job worker.Job) []string {
 	if r.ConvID != "" {
 		argv = append(argv, "--conversation", r.ConvID)
 	}
+	argv = append(argv, "--dangerously-skip-permissions")
 	argv = append(argv, "--output-format", "json")
 	argv = append(argv, "-p", job.Text)
 	return argv

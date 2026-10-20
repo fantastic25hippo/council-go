@@ -60,7 +60,9 @@ func (l *Live) start(job worker.Job) error {
 		if job.PRURL != "" {
 			l.sess.SetPRURL(job.PRURL)
 		}
+		l.mu.Lock()
 		l.approved = false
+		l.mu.Unlock()
 		err := l.poll(ctx)
 		if l.sess != nil && l.sess.PRURL() == "" && job.PRURL != "" {
 			l.sess.SetPRURL(job.PRURL)
@@ -88,7 +90,9 @@ func (l *Live) start(job worker.Job) error {
 		return err
 	}
 	l.sess = &APISession{C: l.Client, SID: id}
+	l.mu.Lock()
 	l.approved = false
+	l.mu.Unlock()
 	return l.poll(ctx)
 }
 
@@ -97,6 +101,9 @@ func (l *Live) answer(text string) error {
 		return errors.New("empty session id")
 	}
 	ctx := l.newCtx()
+	l.mu.Lock()
+	l.approved = false
+	l.mu.Unlock()
 	if err := l.Client.Send(l.sess.SID, text); err != nil {
 		return err
 	}

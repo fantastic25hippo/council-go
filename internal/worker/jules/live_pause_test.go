@@ -28,11 +28,14 @@ func TestLivePausedEndsPoll(t *testing.T) {
 		capturedWarn = msg
 	}
 	run := w.Start(worker.Job{Repo: "o/r", Text: "do it", Branch: "master"})
-	if run.Outcome != worker.OutcomeAsked {
-		t.Fatalf("expected OutcomeAsked, got %v", run.Outcome)
+	if run.Outcome != worker.OutcomeFailed {
+		t.Fatalf("expected OutcomeFailed, got %v", run.Outcome)
 	}
-	if run.Question != "Jules session is paused" {
-		t.Fatalf("expected question %q, got %q", "Jules session is paused", run.Question)
+	if run.Question != "" {
+		t.Fatalf("expected question empty, got %q", run.Question)
+	}
+	if !strings.Contains(run.Report, "resume on the Jules web UI") {
+		t.Fatalf("expected report to mention resume on the Jules web UI, got %q", run.Report)
 	}
 	if !strings.Contains(capturedWarn, "PAUSED") {
 		t.Fatalf("expected captured warn to contain PAUSED, got %q", capturedWarn)
@@ -63,11 +66,14 @@ func TestLiveCancelledEndsPoll(t *testing.T) {
 func TestWorkerMapPausedCancelled(t *testing.T) {
 	w1 := New(&fakeSession{state: "PAUSED", msg: "x"})
 	run1 := w1.Start(worker.Job{})
-	if run1.Outcome != worker.OutcomeAsked {
-		t.Fatalf("expected OutcomeAsked, got %v", run1.Outcome)
+	if run1.Outcome != worker.OutcomeFailed {
+		t.Fatalf("expected OutcomeFailed, got %v", run1.Outcome)
 	}
-	if run1.Question != "Jules session is paused" {
-		t.Fatalf("expected question %q, got %q", "Jules session is paused", run1.Question)
+	if run1.Question != "" {
+		t.Fatalf("expected question empty, got %q", run1.Question)
+	}
+	if !strings.Contains(run1.Report, "resume on the Jules web UI") {
+		t.Fatalf("expected report to mention resume on the Jules web UI, got %q", run1.Report)
 	}
 
 	w2 := New(&fakeSession{state: "CANCELLED"})

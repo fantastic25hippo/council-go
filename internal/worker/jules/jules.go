@@ -92,9 +92,8 @@ func (w *Worker) mapStateToRun() worker.Run {
 		run.Question = msg
 		run.Report = msg
 	case "PAUSED":
-		run.Outcome = worker.OutcomeAsked
-		run.Question = "Jules session is paused"
-		run.Report = msg
+		run.Outcome = worker.OutcomeFailed
+		run.Report = "Jules session is paused; resume on the Jules web UI"
 	case "CANCELLED":
 		run.Outcome = worker.OutcomeCancelled
 		run.Report = msg
