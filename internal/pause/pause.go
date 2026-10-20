@@ -9,16 +9,31 @@ type Controller struct {
 	mu             sync.Mutex
 	PauseRequested bool
 	lastSIGINT     time.Time
+	now            func() time.Time
 }
 
 func New() *Controller {
 	return &Controller{}
 }
 
+func (c *Controller) SetClock(now func() time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = now
+}
+
+func (c *Controller) timeNow() time.Time {
+	if c.now != nil {
+		return c.now()
+	}
+	return time.Now()
+}
+
 func (c *Controller) ClearPause() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.PauseRequested = false
+	c.lastSIGINT = time.Time{}
 }
 
 func (c *Controller) IsPaused() bool {
@@ -31,7 +46,7 @@ func (c *Controller) OnSIGINT() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	now := time.Now()
+	now := c.timeNow()
 	var diff time.Duration
 	if !c.lastSIGINT.IsZero() {
 		diff = now.Sub(c.lastSIGINT)

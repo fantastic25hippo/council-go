@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
@@ -77,4 +78,61 @@ func TestSetOutcome(t *testing.T) {
 	if c.LastOutcome != worker.OutcomeFailed {
 		t.Errorf("expected LastOutcome to be %v, got %v", worker.OutcomeFailed, c.LastOutcome)
 	}
+}
+
+func TestCouncilConcurrentRaceSnapshot(t *testing.T) {
+	c := &Council{}
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	// Concurrent writers
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			step := 0
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					step++
+					c.SetRunning("worker", Handle{PID: step})
+					c.SetAsked()
+					c.SetFixing()
+					c.SetRun(worker.Run{Outcome: worker.OutcomeDone})
+					c.ClearRun()
+				}
+			}
+		}(i)
+	}
+
+	// Concurrent readers using Snapshot()
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					snap := c.Snapshot()
+					_ = snap.Phase
+					_ = snap.LastRun
+					_ = snap.Handle
+					_ = snap.FixRounds
+					_ = snap.Asks
+				}
+			}
+		}()
+	}
+
+	for i := 0; i < 1000; i++ {
+		snap := c.Snapshot()
+		_ = snap.Phase
+	}
+
+	close(stop)
+	wg.Wait()
 }
