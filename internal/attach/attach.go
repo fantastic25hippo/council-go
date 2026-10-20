@@ -15,9 +15,10 @@ type Request struct {
 
 var (
 	reJulesURL = regexp.MustCompile(`https?://jules\.google\.com/(?:u/\d+/)?session/(\d+)`)
-	reBareId   = regexp.MustCompile(`(?:^|\s)([0-9]{10,})(?:\s|$)`)
+	reBareId   = regexp.MustCompile(`\b([0-9]{10,})\b`)
 	rePRURL    = regexp.MustCompile(`https?://(?:www\.)?github\.com/([^/]+/[^/]+)/pull/(\d+)`)
-	rePRNum    = regexp.MustCompile(`(?:^|\s)#(\d+)`)
+	rePRNum    = regexp.MustCompile(`(?:^|[^\w#])#(\d+)\b`)
+	reURL      = regexp.MustCompile(`https?://\S+`)
 )
 
 func Parse(text string) (Request, bool) {
@@ -33,11 +34,17 @@ func Parse(text string) (Request, bool) {
 		}
 	}
 
+	urlSpans := reURL.FindAllStringIndex(text, -1)
+
 	// Find bare session IDs
-	bareMatches := reBareId.FindAllStringSubmatch(text, -1)
+	bareMatches := reBareId.FindAllStringSubmatchIndex(text, -1)
 	for _, m := range bareMatches {
-		if !allZeros(m[1]) {
-			sessionIDs = append(sessionIDs, m[1])
+		if inURL(m[2], m[3], urlSpans) {
+			continue
+		}
+		id := text[m[2]:m[3]]
+		if !allZeros(id) {
+			sessionIDs = append(sessionIDs, id)
 		}
 	}
 
@@ -67,10 +74,14 @@ func Parse(text string) (Request, bool) {
 	}
 
 	// Find PR numbers
-	prNumMatches := rePRNum.FindAllStringSubmatch(text, -1)
+	prNumMatches := rePRNum.FindAllStringSubmatchIndex(text, -1)
 	for _, m := range prNumMatches {
-		if !allZeros(m[1]) {
-			prNumbers = append(prNumbers, stripLeadingZeros(m[1]))
+		if inURL(m[2], m[3], urlSpans) {
+			continue
+		}
+		num := text[m[2]:m[3]]
+		if !allZeros(num) {
+			prNumbers = append(prNumbers, stripLeadingZeros(num))
 		}
 	}
 
@@ -123,4 +134,13 @@ func unique(s []string) []string {
 		}
 	}
 	return res
+}
+
+func inURL(start, end int, urlSpans [][]int) bool {
+	for _, span := range urlSpans {
+		if start >= span[0] && end <= span[1] {
+			return true
+		}
+	}
+	return false
 }

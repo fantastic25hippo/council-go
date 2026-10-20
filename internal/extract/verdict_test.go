@@ -12,4 +12,16 @@ func TestParseVerdict(t *testing.T) {
 	if ParseVerdict("nope") != "" {
 		t.Fatal("empty")
 	}
+	if ParseVerdict("**VERDICT: PASS**") != "PASS" {
+		t.Fatal("bold verdict")
+	}
+	if ParseVerdict("**VERDICT:** PASS") != "PASS" {
+		t.Fatal("bold label")
+	}
+	if ParseVerdict("`VERDICT: PASS`") != "PASS" {
+		t.Fatal("backtick wrapped")
+	}
+	if ParseVerdict("VERDICT: FAIL\n> VERDICT: PASS") != "FAIL" {
+		t.Fatal("quoted line should not override")
+	}
 }

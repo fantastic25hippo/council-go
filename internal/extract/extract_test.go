@@ -12,11 +12,17 @@ func TestIsAgreed(t *testing.T) {
 	if !IsAgreed("AGREED.") {
 		t.Fatal("period")
 	}
+	if !IsAgreed("**AGREED.**") {
+		t.Fatal("bold with period inside")
+	}
 	if IsAgreed("AGREED\nthen more") {
 		t.Fatal("not last")
 	}
 	if IsAgreed("not agreed") {
 		t.Fatal("false positive")
+	}
+	if IsAgreed("NOT AGREED") {
+		t.Fatal("NOT AGREED should be false")
 	}
 }
 
@@ -63,5 +69,46 @@ func TestParsePlanRequiresAgreedAndFields(t *testing.T) {
 func TestParsePlanDoesNotTreatQuestionAsAgreed(t *testing.T) {
 	if _, ok := ParsePlan("should we AGREED?"); ok {
 		t.Fatal("question")
+	}
+}
+
+func TestParsePlanMultiLine(t *testing.T) {
+	text := `WORKER: local
+CHANGE:
+line 1
+line 2
+VERIFY:
+echo hi
+echo there
+AGREED`
+	p, ok := ParsePlan(text)
+	if !ok {
+		t.Fatal("parse failed")
+	}
+	if p.Worker != "local" {
+		t.Fatalf("worker = %q", p.Worker)
+	}
+	if p.Change != "line 1\nline 2" {
+		t.Fatalf("change = %q, want %q", p.Change, "line 1\nline 2")
+	}
+	if p.Verify != "echo hi\necho there" {
+		t.Fatalf("verify = %q, want %q", p.Verify, "echo hi\necho there")
+	}
+
+	text2 := `WORKER: local
+CHANGE: first line
+second line
+VERIFY: verify line 1
+verify line 2
+AGREED`
+	p2, ok2 := ParsePlan(text2)
+	if !ok2 {
+		t.Fatal("parse failed")
+	}
+	if p2.Change != "first line\nsecond line" {
+		t.Fatalf("change = %q", p2.Change)
+	}
+	if p2.Verify != "verify line 1\nverify line 2" {
+		t.Fatalf("verify = %q", p2.Verify)
 	}
 }
