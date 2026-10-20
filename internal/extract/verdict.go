@@ -12,7 +12,6 @@ const verdictCutset = "*_` \t"
 // ParseVerdict returns PASS, FAIL, or "".
 func ParseVerdict(text string) string {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	found := ""
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, ">") {
@@ -21,10 +20,10 @@ func ParseVerdict(text string) string {
 		clean := cleanVerdictLine(trimmed)
 		m := verdictLine.FindStringSubmatch(clean)
 		if m != nil {
-			found = strings.ToUpper(m[1])
+			return strings.ToUpper(m[1])
 		}
 	}
-	return found
+	return ""
 }
 
 func cleanVerdictLine(s string) string {
