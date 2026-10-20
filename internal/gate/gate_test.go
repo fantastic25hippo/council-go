@@ -29,13 +29,23 @@ func TestProtectedOverlap(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "errors on logs/hook.log",
+			name:    "allows logs/hook.log in unrelated dir",
 			owned:   []string{"logs/hook.log"},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name:    "errors on council-jules-async.md",
 			owned:   []string{"council-jules-async.md"},
+			wantErr: true,
+		},
+		{
+			name:    "errors on dot whole tree",
+			owned:   []string{"."},
+			wantErr: true,
+		},
+		{
+			name:    "errors on dot slash whole tree",
+			owned:   []string{"./"},
 			wantErr: true,
 		},
 	}

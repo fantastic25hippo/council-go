@@ -16,7 +16,7 @@ func State(dir string) (dirty, unpushed bool, err error) {
 	if err := Fetcher(dir); err != nil {
 		return false, false, err
 	}
-	status, err := git(dir, "status", "--porcelain")
+	status, err := git(dir, "status", "--porcelain", "--untracked-files=no")
 	if err != nil {
 		return false, false, err
 	}

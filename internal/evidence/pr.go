@@ -66,17 +66,26 @@ func PRChecks(run GHRunner, pr, repo string) (Checks, error) {
 	if repo != "" {
 		argv = append(argv, "--repo", repo)
 	}
-	stdout, _, exit, err := run.Run(argv)
+	stdout, stderr, exit, err := run.Run(argv)
+	out := stdout
+	if stderr != "" {
+		if out != "" {
+			out += "\n" + stderr
+		} else {
+			out = stderr
+		}
+	}
 	if err != nil {
-		return Checks{Out: stdout, Exit: exit}, err
+		return Checks{Out: out, Exit: exit}, err
 	}
 	failed := false
 	if exit != 0 && exit != 8 {
-		noChecks := strings.Contains(stdout, "no checks reported") || strings.Contains(strings.ToLower(stdout), "no checks reported")
+		combined := stdout + "\n" + stderr
+		noChecks := strings.Contains(strings.ToLower(combined), "no checks reported")
 		failed = !noChecks
 	}
 	return Checks{
-		Out:     stdout,
+		Out:     out,
 		Exit:    exit,
 		Pending: exit == 8,
 		Failed:  failed,

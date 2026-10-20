@@ -3,6 +3,7 @@ package gate
 import (
 	"errors"
 	"path"
+	"strings"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
@@ -20,13 +21,21 @@ var Protected = []string{
 }
 
 // ProtectedOverlap returns an error containing "protected" if any owned path
-// equals a Protected name or is a slash-prefixed/suffixed form of one
-// (e.g. "./hook.log", "dir/hook.log"). owned is plan OWNED_PATHS.
+// overlaps a Protected file. An owned entry overlaps a protected file when the
+// protected path equals the owned path or lies under it (with "." = whole tree).
 func ProtectedOverlap(owned []string) error {
 	for _, o := range owned {
-		base := path.Base(o)
+		oClean := strings.TrimPrefix(o, "./")
+		oClean = strings.TrimPrefix(oClean, "/")
+		oClean = strings.TrimSuffix(oClean, "/")
+		oClean = path.Clean(oClean)
+
 		for _, p := range Protected {
-			if base == p || o == p {
+			pClean := strings.TrimPrefix(p, "./")
+			pClean = strings.TrimPrefix(pClean, "/")
+			pClean = path.Clean(pClean)
+
+			if oClean == "." || oClean == "" || pClean == oClean || strings.HasPrefix(pClean, oClean+"/") {
 				return errors.New("protected path overlap: " + p)
 			}
 		}
