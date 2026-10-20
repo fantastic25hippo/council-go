@@ -108,6 +108,32 @@ func TestParse(t *testing.T) {
 				PRNumber:  "8",
 			},
 		},
+		{
+			name:   "Two bare IDs separated by space (A5-9)",
+			text:   "1111111111 2222222222",
+			wantOk: true,
+			wantReq: Request{
+				Error: "Two different Jules sessions given.",
+			},
+		},
+		{
+			name:   "Comma case attaches session with PR (A5-10)",
+			text:   "session 12345678901, #42",
+			wantOk: true,
+			wantReq: Request{
+				SessionID: "12345678901",
+				PRNumber:  "42",
+			},
+		},
+		{
+			name:   "PR number after parenthesis (A5-10)",
+			text:   "session 12345678901 (#42)",
+			wantOk: true,
+			wantReq: Request{
+				SessionID: "12345678901",
+				PRNumber:  "42",
+			},
+		},
 	}
 
 	for _, tc := range tests {

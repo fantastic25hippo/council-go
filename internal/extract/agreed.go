@@ -5,14 +5,23 @@ import (
 	"strings"
 )
 
-var agreedLine = regexp.MustCompile(`(?i)^\*{0,2}AGREED\*{0,2}\.?$`)
+var agreedLine = regexp.MustCompile(`(?i)^AGREED\.?$`)
 
 var launchLine = regexp.MustCompile(`(?i)^LAUNCH(?:\s+WORKER)?:\s*(?:worker\s*=\s*)?([a-zA-Z0-9_-]+)`)
+
+const agreedCutset = "*_` \t"
 
 // IsAgreed is true when the last non-empty line is AGREED (optional bold/period).
 func IsAgreed(text string) bool {
 	last := lastNonEmpty(text)
-	return last != "" && agreedLine.MatchString(last)
+	if last == "" {
+		return false
+	}
+	clean := strings.Trim(last, agreedCutset)
+	if strings.HasSuffix(clean, ".") {
+		clean = strings.Trim(strings.TrimSuffix(clean, "."), agreedCutset) + "."
+	}
+	return agreedLine.MatchString(clean)
 }
 
 // ParseLaunch returns the worker id from a LAUNCH: line, or "".

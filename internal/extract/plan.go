@@ -25,9 +25,9 @@ func ParsePlan(text string) (plan.Block, bool) {
 		case "REPO":
 			b.Repo = rest
 		case "CHANGE":
-			b.Change = rest
+			b.Change, i = collectField(lines, i, rest)
 		case "VERIFY":
-			b.Verify = rest
+			b.Verify, i = collectField(lines, i, rest)
 		case "OWNED_PATHS":
 			if rest != "" {
 				b.OwnedPaths = append(b.OwnedPaths, rest)
@@ -69,4 +69,24 @@ func splitField(line string) (key, rest string, ok bool) {
 	default:
 		return "", "", false
 	}
+}
+
+func collectField(lines []string, startIdx int, rest string) (string, int) {
+	var parts []string
+	if rest != "" {
+		parts = append(parts, rest)
+	}
+	i := startIdx
+	for i+1 < len(lines) {
+		nextLine := lines[i+1]
+		if _, _, ok := splitField(nextLine); ok {
+			break
+		}
+		if IsAgreed(nextLine) {
+			break
+		}
+		parts = append(parts, nextLine)
+		i++
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n")), i
 }
