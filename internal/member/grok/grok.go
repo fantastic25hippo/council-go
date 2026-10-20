@@ -54,6 +54,9 @@ func (m *Member) DisplayName() string {
 }
 
 func (m *Member) Start(cwd string) error {
+	if m.cmd != nil || m.stdin != nil {
+		_ = m.Close()
+	}
 	argv := []string{m.cfg.CLI, "--model", m.cfg.Model}
 	if m.cfg.Effort != "" {
 		argv = append(argv, "--effort", m.cfg.Effort)
