@@ -119,6 +119,40 @@ done
 	}
 }
 
+func TestAgyInterruptDrainsExpiredTimer(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "fake-agy")
+	body := `
+n=0
+while IFS= read -r line; do
+  echo "$line" >> in.log
+  n=$((n+1))
+  if [ "$n" -eq 1 ]; then
+    sleep 0.02
+    echo '{"event":"result","result":{"status":"ERROR","error":"` + liveInterrupt + `","response":""}}'
+  else
+    echo '{"event":"result","result":{"response":"ok after delay","status":"OK"}}'
+  fi
+done
+`
+	if err := os.WriteFile(script, []byte("#!/bin/sh\ncd \""+dir+"\"\n"+body+"\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg.Member{ID: "gemini", DisplayName: "Gemini", CLI: script, Model: "m"}, 1*time.Second)
+	if err := m.Start(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+
+	got, err := m.Send("greet")
+	if err != nil {
+		t.Fatalf("send failed: %v", err)
+	}
+	if got != "ok after delay" {
+		t.Fatalf("got %q, want 'ok after delay'", got)
+	}
+}
+
 func TestAgyNonInterruptError(t *testing.T) {
 	m, dir := startFake(t, `
 while IFS= read -r line; do
