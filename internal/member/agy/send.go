@@ -84,6 +84,12 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 					if werr := writeUser(m.stdin, streamContinuePrompt); werr != nil {
 						return "", false, err
 					}
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
 					timer.Reset(m.timeout)
 					deltas = deltas[:0]
 					continue
