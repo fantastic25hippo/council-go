@@ -119,6 +119,22 @@ done
 	}
 }
 
+func TestAgyInterruptWriteUserError(t *testing.T) {
+	m, _ := startFake(t, `
+read -r line
+echo '{"event":"result","result":{"status":"ERROR","error":"`+liveInterrupt+`","response":""}}'
+exec 0<&-
+exit 0
+`)
+	_, err := m.Send("greet")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "stream was interrupted") {
+		t.Fatalf("expected write error, got stream interrupt error: %v", err)
+	}
+}
+
 func TestAgyNonInterruptError(t *testing.T) {
 	m, dir := startFake(t, `
 while IFS= read -r line; do
