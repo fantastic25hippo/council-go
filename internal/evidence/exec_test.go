@@ -18,3 +18,14 @@ func TestExecGH_ExitError(t *testing.T) {
 		t.Errorf("expected stdout to contain 'hello', got %q", stdout)
 	}
 }
+
+func TestExecGH_CommandNotFound(t *testing.T) {
+	runner := DefaultGHRunner()
+	_, _, exit, err := runner.Run([]string{"nonexistent-command-xyz-12345"})
+	if err == nil {
+		t.Fatalf("expected non-nil error for nonexistent command")
+	}
+	if exit == 0 {
+		t.Errorf("expected non-zero exit code when command fails to start, got %d", exit)
+	}
+}
