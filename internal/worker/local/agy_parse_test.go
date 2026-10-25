@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
@@ -69,5 +70,20 @@ func TestAgyRunnerErrorAndStderrInReport(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "status: ERROR") {
 		t.Fatalf("expected status: ERROR in report, got %q", stdout)
+	}
+}
+
+func TestParseReportTruncatesStderrValidUTF8(t *testing.T) {
+	prefix := strings.Repeat("a", 2046)
+	emoji := "😃" // 4 bytes: 0xF0 0x9F 0x98 0x86
+	suffix := strings.Repeat("x", 2045)
+	rawStderr := prefix + emoji + suffix
+
+	out := parseReport(nil, "", rawStderr)
+	if !utf8.ValidString(out) {
+		t.Fatalf("parseReport returned invalid UTF-8 string: %q", out)
+	}
+	if out != suffix {
+		t.Fatalf("expected truncated stderr %q, got %q", suffix, out)
 	}
 }
