@@ -36,7 +36,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 	argv := r.argv(job)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = r.Cwd
-	cmd.Env = config.StripForbidden(os.Environ())
+	cmd.Env = config.ChildEnv(os.Environ())
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

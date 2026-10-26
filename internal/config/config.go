@@ -38,3 +38,21 @@ func StripForbidden(env []string) []string {
 
 	return result
 }
+
+// ChildEnv returns a copy of env with forbidden keys stripped, any existing GROK_AGY
+// entries dropped, and GROK_AGY=1 appended.
+// Does not mutate env.
+func ChildEnv(env []string) []string {
+	base := StripForbidden(env)
+	result := make([]string, 0, len(base)+1)
+	for _, entry := range base {
+		key := entry
+		if idx := strings.IndexByte(entry, '='); idx >= 0 {
+			key = entry[:idx]
+		}
+		if key != "GROK_AGY" {
+			result = append(result, entry)
+		}
+	}
+	return append(result, "GROK_AGY=1")
+}

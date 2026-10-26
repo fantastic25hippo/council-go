@@ -6,13 +6,26 @@ import (
 	"strings"
 
 	"github.com/fantastic25hippo/council-go/internal/extract"
+	"github.com/fantastic25hippo/council-go/internal/optmem"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
 	"github.com/fantastic25hippo/council-go/internal/state"
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
+// BothPass triggers bothPass directly (used by tests).
+func (s *Session) BothPass(run worker.Run) error {
+	return s.bothPass(run)
+}
+
+func (s *Session) noteOnce(line string) {
+	if w := optmem.NoteOnce(s.Cwd, line); w != "" {
+		s.sys(w)
+	}
+}
+
 func (s *Session) bothPass(run worker.Run) error {
 	s.sys("Both PASS.")
+	s.noteOnce("Council both PASS")
 	if run.Raw.PRURL != "" {
 		s.sys("PR: " + run.Raw.PRURL)
 		s.sys("Ready for Sahil's review.")

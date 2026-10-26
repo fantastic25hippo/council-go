@@ -99,3 +99,7 @@ func WorkerFailed(report string) string {
 func Interject(text string) string {
 	return fmt.Sprintf("Message from Sahil:\n%s", text)
 }
+
+func Memory(text string) string {
+	return fmt.Sprintf("Project memory:\n%s", strings.TrimSpace(text))
+}

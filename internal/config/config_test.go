@@ -103,3 +103,31 @@ func TestStripForbiddenOriginalSliceNotModified(t *testing.T) {
 		t.Errorf("Original slice was modified. Input changed from %v to %v", original, input)
 	}
 }
+
+func TestChildEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"strip forbidden keep path add grok", []string{"XAI_API_KEY=x", "PATH=/bin", "GEMINI_API_KEY=g"}, []string{"PATH=/bin", "GROK_AGY=1"}},
+		{"replace incoming grok_agy", []string{"GROK_AGY=0", "GROK_AGY=1", "GROK_AGY", "PATH=/bin"}, []string{"PATH=/bin", "GROK_AGY=1"}},
+		{"empty input", []string{}, []string{"GROK_AGY=1"}},
+		{"nil input", nil, []string{"GROK_AGY=1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var orig []string
+			if tt.in != nil {
+				orig = append([]string{}, tt.in...)
+			}
+			got := ChildEnv(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ChildEnv(%v) = %v, want %v", tt.in, got, tt.want)
+			}
+			if !reflect.DeepEqual(tt.in, orig) {
+				t.Errorf("input slice was modified: %v != %v", tt.in, orig)
+			}
+		})
+	}
+}
