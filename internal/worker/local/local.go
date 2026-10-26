@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/proc"
 	"github.com/fantastic25hippo/council-go/internal/worker"
@@ -44,7 +45,9 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 	w.canceled = false
 	w.mu.Unlock()
 
+	start := time.Now()
 	stdout, stderr, exit, err := w.runner.Run(job)
+	elapsed := time.Since(start)
 
 	r := worker.Run{
 		Raw: worker.Raw{
@@ -79,6 +82,8 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 		r.Outcome = worker.OutcomeFailed
 		if err == ErrTimeout {
 			r.Outcome = worker.OutcomeTimedOut
+			r.Report = timeoutReport(elapsed, checkoutDir(job, w.runner))
+			return r
 		}
 		r.Report = err.Error()
 		return r
