@@ -18,14 +18,20 @@ func TestRun_StripsForbiddenKeys(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("Run exit = %d, want 0; out: %s", exit, out)
 	}
-	if strings.Contains(out, "secret_xai") || strings.Contains(out, "XAI_API_KEY") {
-		t.Errorf("output contains XAI_API_KEY: %s", out)
+	// Check variable assignments only. A host may inject other variables whose
+	// value merely mentions a key name, which is not a leak.
+	lines := strings.Split(out, "\n")
+	for _, name := range []string{"XAI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY"} {
+		for _, line := range lines {
+			if strings.HasPrefix(line, name+"=") {
+				t.Errorf("output still sets %s", name)
+			}
+		}
 	}
-	if strings.Contains(out, "secret_google") || strings.Contains(out, "GOOGLE_API_KEY") {
-		t.Errorf("output contains GOOGLE_API_KEY: %s", out)
-	}
-	if strings.Contains(out, "secret_gemini") || strings.Contains(out, "GEMINI_API_KEY") {
-		t.Errorf("output contains GEMINI_API_KEY: %s", out)
+	for _, v := range []string{"secret_xai", "secret_google", "secret_gemini"} {
+		if strings.Contains(out, v) {
+			t.Errorf("output contains the value of a forbidden key (%s)", v)
+		}
 	}
 	if !strings.Contains(out, "ALLOWED_VAR=allowed_value") {
 		t.Errorf("output missing ALLOWED_VAR: %s", out)
