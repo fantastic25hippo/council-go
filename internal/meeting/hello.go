@@ -35,12 +35,38 @@ func (s *Session) waitHI(ctx context.Context) error {
 func (s *Session) greet(ctx context.Context) error {
 	s.Council.Phase = state.PhaseWaitHello
 	s.sys("Starting member sessions...")
-	if err := s.A.Start(s.Cwd); err != nil {
-		return fmt.Errorf("start %s: %w", s.A.ID(), err)
+
+	type startRes struct {
+		m   member.Member
+		err error
 	}
-	if err := s.B.Start(s.Cwd); err != nil {
-		return fmt.Errorf("start %s: %w", s.B.ID(), err)
+	ch := make(chan startRes, 2)
+	go func() {
+		ch <- startRes{m: s.A, err: s.A.Start(s.Cwd)}
+	}()
+	go func() {
+		ch <- startRes{m: s.B, err: s.B.Start(s.Cwd)}
+	}()
+
+	var firstErr error
+	var started []member.Member
+	for i := 0; i < 2; i++ {
+		r := <-ch
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("start %s: %w", r.m.ID(), r.err)
+			}
+		} else {
+			started = append(started, r.m)
+		}
 	}
+	if firstErr != nil {
+		for _, m := range started {
+			_ = m.Close()
+		}
+		return firstErr
+	}
+
 	ids := s.workerIDs()
 	workerMins := int(s.Cfg.WorkerTimeout.Minutes())
 	pa := prompt.System(s.A.DisplayName(), s.B.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, workerMins, ids) + "\n\n" + prompt.Greet(s.A.DisplayName(), s.B.DisplayName())
