@@ -3,6 +3,7 @@ package local
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 func parseReport(js map[string]interface{}, rawStdout, rawStderr string) string {
@@ -59,7 +60,11 @@ func parseReport(js map[string]interface{}, rawStdout, rawStderr string) string 
 	}
 	errText := rawStderr
 	if len(errText) > 2048 {
-		errText = errText[len(errText)-2048:]
+		start := len(errText) - 2048
+		for start < len(errText) && !utf8.RuneStart(errText[start]) {
+			start++
+		}
+		errText = errText[start:]
 	}
 	if s := strings.TrimSpace(errText); s != "" {
 		parts = append(parts, s)
