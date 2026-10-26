@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/member"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
@@ -36,6 +37,7 @@ func (s *Session) greet(ctx context.Context) error {
 	s.Council.Phase = state.PhaseWaitHello
 	s.sys("Starting member sessions...")
 
+	t0 := time.Now()
 	type startRes struct {
 		m   member.Member
 		err error
@@ -66,17 +68,22 @@ func (s *Session) greet(ctx context.Context) error {
 		}
 		return firstErr
 	}
+	startY := time.Since(t0)
 
 	ids := s.workerIDs()
 	workerMins := int(s.Cfg.WorkerTimeout.Minutes())
 	pa := prompt.System(s.A.DisplayName(), s.B.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, workerMins, ids) + "\n\n" + prompt.Greet(s.A.DisplayName(), s.B.DisplayName())
 	pb := prompt.System(s.B.DisplayName(), s.A.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, workerMins, ids) + "\n\n" + prompt.Greet(s.B.DisplayName(), s.A.DisplayName())
+	tGreet0 := time.Now()
 	ga, gb, err := sendBoth(ctx, s.A, s.B, pa, pb)
 	if err != nil {
 		return err
 	}
+	greetZ := time.Since(tGreet0)
+	totalX := time.Since(t0)
 	s.say(s.A, ga)
 	s.say(s.B, gb)
+	s.sys(fmt.Sprintf("Council ready in %.1fs (start %.1fs, greeting %.1fs)", totalX.Seconds(), startY.Seconds(), greetZ.Seconds()))
 	return nil
 }
 
