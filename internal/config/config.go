@@ -39,10 +39,10 @@ func StripForbidden(env []string) []string {
 	return result
 }
 
-// ChildEnv returns a copy of env with forbidden keys stripped, any existing GROK_AGY
-// entries dropped, and GROK_AGY=1 appended.
+// ChildEnv returns a copy of env with forbidden keys stripped and any existing
+// GROK_AGY entries dropped. If isWorker is true, GROK_AGY=1 is appended.
 // Does not mutate env.
-func ChildEnv(env []string) []string {
+func ChildEnv(env []string, isWorker bool) []string {
 	base := StripForbidden(env)
 	result := make([]string, 0, len(base)+1)
 	for _, entry := range base {
@@ -54,5 +54,8 @@ func ChildEnv(env []string) []string {
 			result = append(result, entry)
 		}
 	}
-	return append(result, "GROK_AGY=1")
+	if isWorker {
+		return append(result, "GROK_AGY=1")
+	}
+	return result
 }

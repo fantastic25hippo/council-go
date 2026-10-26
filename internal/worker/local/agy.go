@@ -21,12 +21,12 @@ var ErrTimeout = fmt.Errorf("worker timed out")
 
 // AgyRunner runs one-shot `agy -p` jobs. -p is last.
 type AgyRunner struct {
-	CLI     string
-	Model   string
-	Effort  string
-	Cwd     string
-	Timeout time.Duration
-	ConvID  string
+	CLI      string
+	Model    string
+	Effort   string
+	Cwd      string
+	Timeout  time.Duration
+	ConvID   string
 	mu       sync.Mutex
 	cmd      *exec.Cmd
 	canceled bool
@@ -36,7 +36,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 	argv := r.argv(job)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = r.Cwd
-	cmd.Env = config.ChildEnv(os.Environ())
+	cmd.Env = config.ChildEnv(os.Environ(), true)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

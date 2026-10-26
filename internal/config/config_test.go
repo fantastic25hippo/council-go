@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -121,13 +122,58 @@ func TestChildEnv(t *testing.T) {
 			if tt.in != nil {
 				orig = append([]string{}, tt.in...)
 			}
-			got := ChildEnv(tt.in)
+			got := ChildEnv(tt.in, true)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ChildEnv(%v) = %v, want %v", tt.in, got, tt.want)
+				t.Errorf("ChildEnv(%v, true) = %v, want %v", tt.in, got, tt.want)
 			}
 			if !reflect.DeepEqual(tt.in, orig) {
 				t.Errorf("input slice was modified: %v != %v", tt.in, orig)
 			}
 		})
+	}
+}
+
+func TestMemberAndWorkerEnv(t *testing.T) {
+	in := []string{
+		"PATH=/usr/bin",
+		"XAI_API_KEY=xai",
+		"GOOGLE_API_KEY=google",
+		"GEMINI_API_KEY=gemini",
+		"GROK_AGY=1",
+	}
+
+	memberEnv := ChildEnv(in, false)
+	workerEnv := ChildEnv(in, true)
+
+	for _, entry := range memberEnv {
+		if strings.HasPrefix(entry, "GROK_AGY") {
+			t.Errorf("member env contains GROK_AGY: %v", entry)
+		}
+		for _, f := range ForbiddenKeys {
+			if strings.HasPrefix(entry, f) {
+				t.Errorf("member env contains forbidden key %v: %v", f, entry)
+			}
+		}
+	}
+	if !reflect.DeepEqual(memberEnv, []string{"PATH=/usr/bin"}) {
+		t.Errorf("memberEnv = %v, want [PATH=/usr/bin]", memberEnv)
+	}
+
+	hasGrokAgy := false
+	for _, entry := range workerEnv {
+		if entry == "GROK_AGY=1" {
+			hasGrokAgy = true
+		}
+		for _, f := range ForbiddenKeys {
+			if strings.HasPrefix(entry, f) {
+				t.Errorf("worker env contains forbidden key %v: %v", f, entry)
+			}
+		}
+	}
+	if !hasGrokAgy {
+		t.Errorf("worker env missing GROK_AGY=1, got %v", workerEnv)
+	}
+	if !reflect.DeepEqual(workerEnv, []string{"PATH=/usr/bin", "GROK_AGY=1"}) {
+		t.Errorf("workerEnv = %v, want [PATH=/usr/bin GROK_AGY=1]", workerEnv)
 	}
 }

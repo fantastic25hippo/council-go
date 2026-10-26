@@ -87,7 +87,7 @@ func (m *Member) Start(cwd string) error {
 	argv := buildArgv(m.cfg, m.cwd)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = m.hookDir
-	cmd.Env = config.ChildEnv(os.Environ())
+	cmd.Env = config.ChildEnv(os.Environ(), false)
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	in, err := cmd.StdinPipe()

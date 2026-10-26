@@ -118,7 +118,6 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 					s.Plan = pA
 					s.PlanText = nackA
 					s.sys("Dual AGREED.")
-					s.noteOnce("Council dual AGREED")
 					return true, secondText, nil
 				}
 			}
@@ -129,7 +128,6 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 	}
 
 	s.sys("Dual AGREED.")
-	s.noteOnce("Council dual AGREED")
 	return true, secondText, nil
 }
 

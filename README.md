@@ -40,5 +40,6 @@ See [docs/GUARDRAILS.md](docs/GUARDRAILS.md). Short version:
 - Launcher `bin/council`; compiled binary `bin/council-bin`.
 - No `.go` file over 200 lines. Packages form a DAG. No import cycles.
 - No pay-per-token API keys.
+- OptMem: each member runs its own OptMem wake and note; the local worker runs with GROK_AGY=1 so it skips it.
 - Council never merges to `master`. Jules opens PRs; Sahil reviews and merges.
 - The relay owns the [worker contract](docs/WORKER_CONTRACT.md). Adapters report typed outcomes. Prompts are not the protocol.

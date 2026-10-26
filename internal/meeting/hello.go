@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/fantastic25hippo/council-go/internal/member"
-	"github.com/fantastic25hippo/council-go/internal/optmem"
 	"github.com/fantastic25hippo/council-go/internal/prompt"
 	"github.com/fantastic25hippo/council-go/internal/state"
 )
@@ -42,18 +41,9 @@ func (s *Session) greet(ctx context.Context) error {
 	if err := s.B.Start(s.Cwd); err != nil {
 		return fmt.Errorf("start %s: %w", s.B.ID(), err)
 	}
-	text, warn := optmem.Wake(s.Cwd)
-	if warn != "" {
-		s.sys(warn)
-	}
 	ids := s.workerIDs()
 	pa := prompt.System(s.A.DisplayName(), s.B.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, ids) + "\n\n" + prompt.Greet(s.A.DisplayName(), s.B.DisplayName())
 	pb := prompt.System(s.B.DisplayName(), s.A.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, ids) + "\n\n" + prompt.Greet(s.B.DisplayName(), s.A.DisplayName())
-	if text != "" {
-		mem := prompt.Memory(text)
-		pa += "\n\n" + mem
-		pb += "\n\n" + mem
-	}
 	ga, gb, err := sendBoth(ctx, s.A, s.B, pa, pb)
 	if err != nil {
 		return err

@@ -12,6 +12,7 @@ Do not break these.
 ## Safety
 
 - Strip `XAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY` from worker and member environments.
+- OptMem: each member runs its own OptMem wake and note; the local worker runs with GROK_AGY=1 so it skips it.
 - Council never merges to `master`. No `auto_merge`. Merging is Sahil's manual review.
 - Members stay read-only sandboxed via CLI flags.
 - Do not touch grok-agy or the Python Council checkout.

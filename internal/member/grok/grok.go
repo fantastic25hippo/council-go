@@ -64,7 +64,7 @@ func (m *Member) Start(cwd string) error {
 	argv = append(argv, "--sandbox", "read-only", "--no-plan", "agent", "stdio")
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
-	cmd.Env = config.ChildEnv(os.Environ())
+	cmd.Env = config.ChildEnv(os.Environ(), false)
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	in, err := cmd.StdinPipe()
