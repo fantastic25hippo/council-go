@@ -23,8 +23,8 @@ var allowedTools = map[string]bool{
 	"find_by_name": true,
 }
 
-// memoCmd matches only "grok-agy-memo wake" or "grok-agy-memo note ..." with no shell syntax.
-var memoCmd = regexp.MustCompile("^grok-agy-memo (wake|note [^;&|`$<>()\\n]*)$")
+// memoCmd matches only "grok-agy-memo wake" or "grok-agy-memo note ..." optionally after "cd DIR && ", with no other shell syntax.
+var memoCmd = regexp.MustCompile("^(cd [A-Za-z0-9_./-]+ && )?grok-agy-memo (wake|note [^;&|`$<>()\\n]*)$")
 
 func Decide(name, command string) (string, string) {
 	if allowedTools[name] || (name == "run_command" && memoCmd.MatchString(strings.TrimSpace(command))) {
@@ -108,7 +108,7 @@ def find_command(v):
                 return c
     return ""
 
-memo = re.match(r"^grok-agy-memo (wake|note [^;&|$<>()\n\x60]*)$", find_command(data).strip())
+memo = re.match(r"^(cd [A-Za-z0-9_./-]+ && )?grok-agy-memo (wake|note [^;&|$<>()\n\x60]*)$", find_command(data).strip())
 
 if name in allowed or (name == "run_command" and memo):
     res = {"decision": "allow"}
