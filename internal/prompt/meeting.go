@@ -7,7 +7,7 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
-func System(name, other string, debateTurns, fixMax int, workerIDs []string) string {
+func System(name, other string, debateTurns, fixMax, workerTimeoutMins int, workerIDs []string) string {
 	ids := strings.Join(workerIDs, ", ")
 	return fmt.Sprintf(`You are one of two members of a council: %s and %s. Sahil is the user and watches.
 You will see only the other member's proposals and messages, never its reasoning.
@@ -16,6 +16,7 @@ First to agree writes the full plan plus AGREED. Second AGREED launches the work
 Independent verification, maximum %d fix rounds, then adjourn.
 Workers: %s.
 Don't do the worker's typing unless the agreed plan says so. Never use pay-per-token API keys.
+One worker job must finish and commit well inside %d minutes. If the task is bigger, the plan block covers only the first slice (the smallest set that ends green and committed) and says what the later slices are.
 
 Required plan block:
 WORKER: <id from: %s>
@@ -24,7 +25,7 @@ OWNED_PATHS:
 - <path>
 CHANGE: <self-contained change>
 VERIFY: <ONE bare shell command only>
-AGREED`, name, other, debateTurns, fixMax, ids, ids)
+AGREED`, name, other, debateTurns, fixMax, ids, workerTimeoutMins, ids)
 }
 
 func Greet(name, other string) string {

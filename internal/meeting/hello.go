@@ -42,8 +42,9 @@ func (s *Session) greet(ctx context.Context) error {
 		return fmt.Errorf("start %s: %w", s.B.ID(), err)
 	}
 	ids := s.workerIDs()
-	pa := prompt.System(s.A.DisplayName(), s.B.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, ids) + "\n\n" + prompt.Greet(s.A.DisplayName(), s.B.DisplayName())
-	pb := prompt.System(s.B.DisplayName(), s.A.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, ids) + "\n\n" + prompt.Greet(s.B.DisplayName(), s.A.DisplayName())
+	workerMins := int(s.Cfg.WorkerTimeout.Minutes())
+	pa := prompt.System(s.A.DisplayName(), s.B.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, workerMins, ids) + "\n\n" + prompt.Greet(s.A.DisplayName(), s.B.DisplayName())
+	pb := prompt.System(s.B.DisplayName(), s.A.DisplayName(), s.Cfg.DebateTurnsEach, s.Cfg.FixRoundsMax, workerMins, ids) + "\n\n" + prompt.Greet(s.B.DisplayName(), s.A.DisplayName())
 	ga, gb, err := sendBoth(ctx, s.A, s.B, pa, pb)
 	if err != nil {
 		return err

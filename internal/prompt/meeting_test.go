@@ -9,9 +9,12 @@ import (
 )
 
 func TestSystemAndGreet(t *testing.T) {
-	s := System("Grok", "Gemini", 3, 3, []string{"local", "jules"})
+	s := System("Grok", "Gemini", 3, 3, 10, []string{"local", "jules"})
 	if !strings.Contains(s, "Grok") || !strings.Contains(s, "AGREED") || strings.Contains(s, "python3") {
 		t.Fatalf("system %q", s)
+	}
+	if !strings.Contains(s, "10 minutes") || !strings.Contains(s, "first slice") {
+		t.Fatalf("system missing timeout or slice instructions %q", s)
 	}
 	g := Greet("Grok", "Gemini")
 	if !strings.Contains(g, "Grok") || strings.Contains(strings.ToLower(g), "propose") && strings.Contains(g, "Do not start proposing") {
