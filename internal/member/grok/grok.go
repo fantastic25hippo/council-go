@@ -57,11 +57,14 @@ func (m *Member) Start(cwd string) error {
 	if m.cmd != nil || m.stdin != nil {
 		_ = m.Close()
 	}
+	if err := EnsureSandboxProfile(); err != nil {
+		return err
+	}
 	argv := []string{m.cfg.CLI, "--model", m.cfg.Model}
 	if m.cfg.Effort != "" {
 		argv = append(argv, "--effort", m.cfg.Effort)
 	}
-	argv = append(argv, "--sandbox", "read-only", "--no-plan", "agent", "stdio")
+	argv = append(argv, "--sandbox", "council-member", "--no-plan", "agent", "stdio")
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
 	cmd.Env = config.ChildEnv(os.Environ(), false)

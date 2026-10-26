@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 type HookResponse struct {
@@ -21,8 +23,11 @@ var allowedTools = map[string]bool{
 	"find_by_name": true,
 }
 
-func Decide(name string) (string, string) {
-	if allowedTools[name] {
+// memoCmd matches only "grok-agy-memo wake" or "grok-agy-memo note ..." with no shell syntax.
+var memoCmd = regexp.MustCompile("^grok-agy-memo (wake|note [^;&|`$<>()\\n]*)$")
+
+func Decide(name, command string) (string, string) {
+	if allowedTools[name] || (name == "run_command" && memoCmd.MatchString(strings.TrimSpace(command))) {
 		return "allow", ""
 	}
 	return "deny", fmt.Sprintf("tool %s is not permitted for read-only member", name)
@@ -45,6 +50,24 @@ func extractToolName(payload map[string]any) string {
 	return ""
 }
 
+// findCommand returns the first string under a command-like key, at any depth.
+func findCommand(v any) string {
+	switch t := v.(type) {
+	case map[string]any:
+		for _, k := range []string{"CommandLine", "commandLine", "command", "Command"} {
+			if c, ok := t[k].(string); ok {
+				return c
+			}
+		}
+		for _, x := range t {
+			if c := findCommand(x); c != "" {
+				return c
+			}
+		}
+	}
+	return ""
+}
+
 func HandleHook(r io.Reader, w io.Writer) error {
 	var payload map[string]any
 	if err := json.NewDecoder(r).Decode(&payload); err != nil {
@@ -54,7 +77,7 @@ func HandleHook(r io.Reader, w io.Writer) error {
 		})
 	}
 	name := extractToolName(payload)
-	decision, reason := Decide(name)
+	decision, reason := Decide(name, findCommand(payload))
 	return json.NewEncoder(w).Encode(HookResponse{
 		Decision: decision,
 		Reason:   reason,
@@ -62,7 +85,7 @@ func HandleHook(r io.Reader, w io.Writer) error {
 }
 
 const hookScriptContent = `#!/usr/bin/env python3
-import sys, json
+import sys, json, re
 
 try:
     data = json.load(sys.stdin)
@@ -74,7 +97,20 @@ name = str(tc.get("name") if isinstance(tc, dict) else "")
 
 allowed = {"view_file", "read_file", "list_dir", "grep_search", "find_by_name"}
 
-if name in allowed:
+def find_command(v):
+    if isinstance(v, dict):
+        for k in ("CommandLine", "commandLine", "command", "Command"):
+            if isinstance(v.get(k), str):
+                return v[k]
+        for x in v.values():
+            c = find_command(x)
+            if c:
+                return c
+    return ""
+
+memo = re.match(r"^grok-agy-memo (wake|note [^;&|$<>()\n\x60]*)$", find_command(data).strip())
+
+if name in allowed or (name == "run_command" and memo):
     res = {"decision": "allow"}
 else:
     res = {"decision": "deny", "reason": f"tool {name} is not permitted for read-only member"}
