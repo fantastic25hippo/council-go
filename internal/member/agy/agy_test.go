@@ -1,7 +1,9 @@
 package agy
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -101,49 +103,64 @@ func TestAgySendAlwaysHang(t *testing.T) {
 }
 
 func TestBuildArgv(t *testing.T) {
-	c := cfg.Member{
-		ID:     "gemini",
-		CLI:    "my-agy",
-		Model:  "gemini-pro",
-		Effort: "high",
-	}
-	cwd := "/path/to/workdir"
-	argv := buildArgv(c, cwd)
-
-	expected := []string{
-		"my-agy",
-		"--sandbox",
-		"--mode", "plan",
-		"--dangerously-skip-permissions",
+	c := cfg.Member{ID: "gemini", CLI: "my-agy", Model: "gemini-pro", Effort: "high"}
+	argv := buildArgv(c, "/path/to/workdir")
+	want := []string{
+		"my-agy", "--sandbox", "--dangerously-skip-permissions",
 		"--model", "gemini-pro",
 		"--input-format", "stream-json",
 		"--output-format", "stream-json",
 		"--add-dir", "/path/to/workdir",
 		"--effort", "high",
 	}
-
-	joined := strings.Join(argv, " ")
-	for _, flag := range []string{
-		"--sandbox",
-		"--mode plan",
-		"--dangerously-skip-permissions",
-		"--model gemini-pro",
-		"--input-format stream-json",
-		"--output-format stream-json",
-		"--add-dir /path/to/workdir",
-		"--effort high",
-	} {
-		if !strings.Contains(joined, flag) {
-			t.Fatalf("argv %v missing %q", argv, flag)
+	if len(argv) != len(want) {
+		t.Fatalf("argv len = %d, want %d: %v", len(argv), len(want), argv)
+	}
+	for i, w := range want {
+		if argv[i] != w {
+			t.Fatalf("argv[%d] = %q, want %q", i, argv[i], w)
 		}
 	}
-
-	if len(argv) != len(expected) {
-		t.Fatalf("got argv %v, want %v", argv, expected)
-	}
-	for i := range expected {
-		if argv[i] != expected[i] {
-			t.Fatalf("argv[%d] = %q, want %q", i, argv[i], expected[i])
+	for _, tok := range argv {
+		if tok == "--mode" || tok == "plan" {
+			t.Fatalf("argv %v must not contain --mode or plan", argv)
 		}
+	}
+}
+
+func TestHook(t *testing.T) {
+	dir := t.TempDir()
+	if err := installHook(dir); err != nil {
+		t.Fatal(err)
+	}
+	cfgData, err := os.ReadFile(filepath.Join(dir, ".agents", "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var conf map[string]any
+	if err := json.Unmarshal(cfgData, &conf); err != nil {
+		t.Fatal(err)
+	}
+	pre, _ := conf["grok-agy-tools"].(map[string]any)["PreToolUse"].([]any)
+	hooks, _ := pre[0].(map[string]any)["hooks"].([]any)
+	cmdPath, _ := hooks[0].(map[string]any)["command"].(string)
+	if fi, err := os.Stat(cmdPath); err != nil || fi.Mode()&0111 == 0 {
+		t.Fatalf("hook %q not executable: %v", cmdPath, err)
+	}
+	for _, tc := range []struct{ n, w string }{{"read_file", "allow"}, {"write_file", "deny"}, {"run_command", "deny"}} {
+		cmd := exec.Command(cmdPath)
+		cmd.Stdin = strings.NewReader(`{"toolCall":{"name":"` + tc.n + `"}}`)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("exec %s: %v", tc.n, err)
+		}
+		var resp HookResponse
+		if err := json.Unmarshal(out, &resp); err != nil || resp.Decision != tc.w {
+			t.Fatalf("%s got %q want %q", tc.n, resp.Decision, tc.w)
+		}
+	}
+	m := New(cfg.Member{ID: "m", CLI: "/nonexistent/bin"}, time.Second)
+	if err := m.Start(dir); err == nil || m.hookDir != "" {
+		t.Fatalf("Start err=%v hookDir=%q", err, m.hookDir)
 	}
 }

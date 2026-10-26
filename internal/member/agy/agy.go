@@ -19,6 +19,7 @@ type Member struct {
 	timeout          time.Duration
 	hangRestartDelay time.Duration
 	cwd              string
+	hookDir          string
 	cmd              *exec.Cmd
 	stdin            io.WriteCloser
 	msgs             chan string
@@ -51,7 +52,7 @@ func buildArgv(c cfg.Member, cwd string) []string {
 		cli = "agy"
 	}
 	argv := []string{
-		cli, "--sandbox", "--mode", "plan", "--dangerously-skip-permissions",
+		cli, "--sandbox", "--dangerously-skip-permissions",
 		"--model", c.Model,
 		"--input-format", "stream-json",
 		"--output-format", "stream-json",
@@ -70,21 +71,37 @@ func (m *Member) Start(cwd string) error {
 	if m.cmd != nil || m.stdin != nil {
 		_ = m.Close()
 	}
+	hookDir, err := os.MkdirTemp("", "council-agy-*")
+	if err != nil {
+		return err
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(hookDir)
+		m.hookDir = ""
+	}
+	if err := installHook(hookDir); err != nil {
+		cleanup()
+		return err
+	}
+	m.hookDir = hookDir
 	argv := buildArgv(m.cfg, m.cwd)
 	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Dir = m.cwd
+	cmd.Dir = m.hookDir
 	cmd.Env = config.StripForbidden(os.Environ())
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	in, err := cmd.StdinPipe()
 	if err != nil {
+		cleanup()
 		return err
 	}
 	out, err := cmd.StdoutPipe()
 	if err != nil {
+		cleanup()
 		return err
 	}
 	if err := cmd.Start(); err != nil {
+		cleanup()
 		return err
 	}
 	m.cmd = cmd
@@ -102,6 +119,10 @@ func (m *Member) Close() error {
 		_ = proc.Kill(m.cmd)
 		_, _ = m.cmd.Process.Wait()
 		m.cmd = nil
+	}
+	if m.hookDir != "" {
+		_ = os.RemoveAll(m.hookDir)
+		m.hookDir = ""
 	}
 	return nil
 }
