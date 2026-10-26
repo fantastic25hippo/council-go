@@ -116,3 +116,23 @@ func TestNoteOnce(t *testing.T) {
 		t.Fatalf("expected 1 execution, got %d", len(lines))
 	}
 }
+
+func TestWakeAllowsSlowSync(t *testing.T) {
+	script := `
+if [ "$1" = "wake" ]; then
+    sleep 7
+    echo "synced memory text"
+    exit 0
+fi
+exit 0
+`
+	dir, _ := createFakeMemo(t, script)
+
+	out, warn := Wake(dir)
+	if warn != "" {
+		t.Fatalf("unexpected warning on slow wake: %q", warn)
+	}
+	if strings.TrimSpace(out) != "synced memory text" {
+		t.Fatalf("expected %q, got %q", "synced memory text", out)
+	}
+}

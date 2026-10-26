@@ -13,6 +13,11 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/config"
 )
 
+const (
+	wakeTimeout = 40 * time.Second
+	noteTimeout = 40 * time.Second
+)
+
 var (
 	notedMu   sync.Mutex
 	notedDirs = make(map[string]bool)
@@ -58,7 +63,7 @@ func Wake(cwd string) (string, string) {
 		return "", "grok-agy-memo not found: " + err.Error()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), wakeTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin, "wake")
@@ -91,7 +96,7 @@ func Note(cwd, line string) string {
 		return "grok-agy-memo not found: " + err.Error()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), noteTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin, "note", line)
