@@ -2,7 +2,7 @@
 council-go keeps one live Grok session and one live Gemini session, they agree a plan, then a worker types.
 
 # How to start
-From a checkout where `grok` and `agy` are on `PATH`, run `go build -o bin/council-bin ./cmd/council` then `./bin/council`. The launcher prepends `~/.grok/bin` and `~/.local/bin`, sources `~/.config/council/jules.env` if present, and asks for a working folder (zenity when GUI, else TTY). `./bin/council-here FOLDER` or `COUNCIL_START_DIR` skips the picker. The clickable launcher is `council.desktop` in this folder. Double-click it. A folder picker opens. The working folder is the chosen directory. Both members start there. Type `hi`, both members greet, then `Sahil>` waits for a task.
+From a checkout where `grok` and `agy` are on `PATH`, run `go build -o bin/council-bin ./cmd/council` then `./bin/council`. The launcher prepends `~/.grok/bin` and `~/.local/bin`, sources `~/.config/council/jules.env` if present, and asks for a working folder (zenity when GUI, else TTY). `./bin/council-here FOLDER` or `COUNCIL_START_DIR` skips the picker. The clickable launcher is `council.desktop` in this folder. Double-click it. A folder picker opens. The working folder is the chosen directory. Both members start there. Council greets on start, and Sahil's first line is the task.
 
 # Startup time
 When members finish starting up and exchange initial greetings, council reports `Council ready in X.Xs (start Ys, greeting Zs)`. `start Ys` is the wall-clock time spent launching member sessions in parallel, `greeting Zs` is the round-trip wall-clock time for exchanging initial greeting prompts across members, and `X.Xs` is the total startup duration.

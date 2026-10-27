@@ -35,12 +35,7 @@ func TestGreet(t *testing.T) {
 	t.Run("parallel start both succeed", func(t *testing.T) {
 		a := &stubMember{Fake: &member.Fake{Name: "agy", Shown: "Agy", Replies: []string{"hi"}}, startDelay: 200 * time.Millisecond}
 		b := &stubMember{Fake: &member.Fake{Name: "grok", Shown: "Grok", Replies: []string{"hi"}}, startDelay: 200 * time.Millisecond}
-		s := &Session{
-			A:       a,
-			B:       b,
-			Council: &state.Council{},
-			IO:      &term.IO{},
-		}
+		s := &Session{A: a, B: b, Council: &state.Council{}, IO: &term.IO{}}
 		start := time.Now()
 		err := s.greet(context.Background())
 		elapsed := time.Since(start)
@@ -59,12 +54,7 @@ func TestGreet(t *testing.T) {
 	t.Run("A.Start fails closes B if started", func(t *testing.T) {
 		a := &stubMember{Fake: &member.Fake{Name: "agy", Shown: "Agy"}, startErr: errors.New("boom A")}
 		b := &stubMember{Fake: &member.Fake{Name: "grok", Shown: "Grok"}, startDelay: 200 * time.Millisecond}
-		s := &Session{
-			A:       a,
-			B:       b,
-			Council: &state.Council{},
-			IO:      &term.IO{},
-		}
+		s := &Session{A: a, B: b, Council: &state.Council{}, IO: &term.IO{}}
 		err := s.greet(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "start agy: boom A") {
 			t.Fatalf("expected 'start agy: boom A', got %v", err)
@@ -77,12 +67,7 @@ func TestGreet(t *testing.T) {
 	t.Run("B.Start fails closes A if started", func(t *testing.T) {
 		a := &stubMember{Fake: &member.Fake{Name: "agy", Shown: "Agy"}, startDelay: 200 * time.Millisecond}
 		b := &stubMember{Fake: &member.Fake{Name: "grok", Shown: "Grok"}, startErr: errors.New("boom B")}
-		s := &Session{
-			A:       a,
-			B:       b,
-			Council: &state.Council{},
-			IO:      &term.IO{},
-		}
+		s := &Session{A: a, B: b, Council: &state.Council{}, IO: &term.IO{}}
 		err := s.greet(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "start grok: boom B") {
 			t.Fatalf("expected 'start grok: boom B', got %v", err)
@@ -96,12 +81,7 @@ func TestGreet(t *testing.T) {
 		var buf bytes.Buffer
 		a := &stubMember{Fake: &member.Fake{Name: "agy", Shown: "Agy", Replies: []string{"hi"}}, startDelay: 200 * time.Millisecond}
 		b := &stubMember{Fake: &member.Fake{Name: "grok", Shown: "Grok", Replies: []string{"hi"}}, startDelay: 200 * time.Millisecond}
-		s := &Session{
-			A:       a,
-			B:       b,
-			Council: &state.Council{},
-			IO:      &term.IO{Out: &buf},
-		}
+		s := &Session{A: a, B: b, Council: &state.Council{}, IO: &term.IO{Out: &buf}}
 		if err := s.greet(context.Background()); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -120,17 +100,43 @@ func TestGreet(t *testing.T) {
 		if errX != nil || errY != nil || errZ != nil {
 			t.Fatalf("failed to parse floats: %v %v %v", errX, errY, errZ)
 		}
-		if y < 0.15 || y >= 0.35 {
-			t.Errorf("expected Y ~ 0.2s (0.15 <= Y < 0.35), got %f", y)
+		if y < 0.15 || y >= 0.35 || z < 0 || x < y || x < z || x >= 0.5 {
+			t.Errorf("unexpected timing values: x=%f y=%f z=%f", x, y, z)
 		}
-		if z < 0 {
-			t.Errorf("expected Z >= 0, got %f", z)
+	})
+}
+
+func TestGreet_DoesNotWaitForHi(t *testing.T) {
+	a := &member.Fake{Name: "agy", Shown: "Agy", Replies: []string{"hi"}}
+	b := &member.Fake{Name: "grok", Shown: "Grok", Replies: []string{"hi"}}
+	s := &Session{A: a, B: b, Council: &state.Council{}, IO: &term.IO{In: strings.NewReader("quit\n")}}
+	if err := s.waitHI(context.Background()); err != nil {
+		t.Fatalf("waitHI failed: %v", err)
+	}
+	if err := s.greet(context.Background()); err != nil || a.Started != 1 || b.Started != 1 {
+		t.Fatalf("greet failed or didn't start: err=%v a=%d b=%d", err, a.Started, b.Started)
+	}
+	if err := s.waitTask(context.Background()); err != nil || s.Council.Phase != state.PhaseAdjourn {
+		t.Fatalf("waitTask failed or didn't adjourn: err=%v phase=%s", err, s.Council.Phase)
+	}
+	if len(a.Sent) != 1 || len(b.Sent) != 1 {
+		t.Errorf("expected only greeting sent (no model for quit), got a=%d b=%d", len(a.Sent), len(b.Sent))
+	}
+}
+
+func TestTask(t *testing.T) {
+	t.Run("first sentence becomes task", func(t *testing.T) {
+		s := &Session{Council: &state.Council{}, IO: &term.IO{In: strings.NewReader("Implement dark mode\n\n")}}
+		if err := s.waitTask(context.Background()); err != nil || s.Task != "Implement dark mode" {
+			t.Fatalf("err=%v task=%q", err, s.Task)
 		}
-		if x < y || x < z {
-			t.Errorf("expected X >= Y and X >= Z, got X=%f Y=%f Z=%f", x, y, z)
-		}
-		if x >= 0.5 {
-			t.Errorf("expected X < 0.5, got %f", x)
+	})
+	t.Run("quit and exit adjourn without model", func(t *testing.T) {
+		for _, cmd := range []string{"quit\n", "exit\n"} {
+			s := &Session{Council: &state.Council{}, IO: &term.IO{In: strings.NewReader(cmd)}}
+			if err := s.waitTask(context.Background()); err != nil || s.Council.Phase != state.PhaseAdjourn {
+				t.Fatalf("cmd=%q err=%v phase=%s", cmd, err, s.Council.Phase)
+			}
 		}
 	})
 }

@@ -3,7 +3,6 @@ package meeting
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/member"
@@ -12,25 +11,7 @@ import (
 )
 
 func (s *Session) waitHI(ctx context.Context) error {
-	s.Council.Phase = state.PhaseWaitHI
-	s.sys("Type hi to start the council, or quit.")
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		line, err := s.readSahil(ctx, "Sahil> ")
-		if err != nil {
-			return err
-		}
-		low := strings.ToLower(strings.TrimSpace(line))
-		if low == "quit" || low == "exit" {
-			s.Council.Phase = state.PhaseAdjourn
-			return nil
-		}
-		if low == "hi" {
-			return nil
-		}
-	}
+	return nil
 }
 
 func (s *Session) greet(ctx context.Context) error {
