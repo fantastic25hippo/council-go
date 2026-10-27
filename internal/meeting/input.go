@@ -31,18 +31,15 @@ func (s *Session) readSahil(ctx context.Context, promptStr string) (string, erro
 }
 
 func (s *Session) pauseLoop(ctx context.Context) error {
-	s.sys("Paused. c resume, /status, /jules, quit, or type a message for both members.")
+	s.sys("Paused. Enter or c to resume, quit, or type a message for both members.")
 	for {
 		line, err := s.IO.ReadPaused(ctx, "paused> ")
 		if err != nil {
 			return err
 		}
 		t := strings.TrimSpace(line)
-		if t == "" {
-			continue
-		}
 		low := strings.ToLower(t)
-		if low == "c" {
+		if t == "" || low == "c" {
 			if s.IO.Pause != nil {
 				s.IO.Pause.ClearPause()
 			}
@@ -52,40 +49,30 @@ func (s *Session) pauseLoop(ctx context.Context) error {
 			s.Council.Phase = state.PhaseAdjourn
 			return nil
 		}
-		if low == "/status" {
-			s.sys(fmt.Sprintf("Phase: %s", s.Council.Phase))
-			s.sys(fmt.Sprintf("Worker: %s", s.Council.WorkerID))
-			if s.Council.Handle.SessionID != "" {
-				s.sys(fmt.Sprintf("SessionID: %s", s.Council.Handle.SessionID))
-			}
-			if s.Council.LastRun.Raw.SessionID != "" && s.Council.Handle.SessionID == "" {
-				s.sys(fmt.Sprintf("SessionID: %s", s.Council.LastRun.Raw.SessionID))
-			}
-			if s.Council.LastRun.Raw.PRURL != "" {
-				s.sys(fmt.Sprintf("PRURL: %s", s.Council.LastRun.Raw.PRURL))
-			}
-			continue
-		}
-		if low == "/jules" {
-			if s.Council.LastRun.Raw.SessionID != "" || s.Council.LastRun.Raw.PRURL != "" {
-				if s.Council.LastRun.Raw.SessionID != "" {
-					s.sys(fmt.Sprintf("SessionID: %s", s.Council.LastRun.Raw.SessionID))
-				}
-				if s.Council.LastRun.Raw.PRURL != "" {
-					s.sys(fmt.Sprintf("PRURL: %s", s.Council.LastRun.Raw.PRURL))
-				}
-			} else {
-				s.sys("No Jules session.")
-			}
-			continue
-		}
 
-		// Any other non-empty line -> Interject
-		ra, rb, err := sendBoth(ctx, s.A, s.B, prompt.Interject(t), prompt.Interject(t))
+		// Any other text -> Interject with state block appended
+		msgText := t + s.pauseStateBlock()
+		ra, rb, err := sendBoth(ctx, s.A, s.B, prompt.Interject(msgText), prompt.Interject(msgText))
 		if err != nil {
 			return err
 		}
 		s.say(s.A, ra)
 		s.say(s.B, rb)
 	}
+}
+
+func (s *Session) pauseStateBlock() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("\n\n[State]\nPhase: %s\nWorker: %s", s.Council.Phase, s.Council.WorkerID))
+	sid := s.Council.Handle.SessionID
+	if sid == "" {
+		sid = s.Council.LastRun.Raw.SessionID
+	}
+	if sid != "" {
+		sb.WriteString(fmt.Sprintf("\nJules session id: %s", sid))
+	}
+	if pr := s.Council.LastRun.Raw.PRURL; pr != "" {
+		sb.WriteString(fmt.Sprintf("\nPR URL: %s", pr))
+	}
+	return sb.String()
 }

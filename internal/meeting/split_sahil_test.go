@@ -17,6 +17,7 @@ func TestRunSplitAskSahilPass(t *testing.T) {
 				agreedPlan(),
 				"VERDICT: PASS\n- looks good",
 				"VERDICT: PASS\n- still pass",
+				"Sahil accepted.\nSAHIL_MEANS: PASS",
 			}}
 			b := &member.Fake{Name: "gemini", Shown: "Gemini", Replies: []string{
 				"Hello, I am Gemini.",
@@ -24,6 +25,7 @@ func TestRunSplitAskSahilPass(t *testing.T) {
 				"LAUNCH: local\nAGREED",
 				"VERDICT: FAIL\n- missing tests",
 				"VERDICT: FAIL\n- still fail",
+				"Sahil approved.\nSAHIL_MEANS: PASS",
 			}}
 			w := &worker.Fake{
 				Caps: worker.Capabilities{TouchesLocalCheckout: true, CanAskAndWait: true, KeepsMemoryAcrossFixes: true},
@@ -52,6 +54,7 @@ func TestRunSplitAskSahilFail(t *testing.T) {
 		agreedPlan(),
 		"VERDICT: PASS\n- looks good",
 		"VERDICT: PASS\n- still pass",
+		"Sahil wants to fail it.\nSAHIL_MEANS: FAIL",
 	}}
 	b := &member.Fake{Name: "gemini", Shown: "Gemini", Replies: []string{
 		"Hello, I am Gemini.",
@@ -59,6 +62,7 @@ func TestRunSplitAskSahilFail(t *testing.T) {
 		"LAUNCH: local\nAGREED",
 		"VERDICT: FAIL\n- missing tests",
 		"VERDICT: FAIL\n- still fail",
+		"Sahil rejected.\nSAHIL_MEANS: FAIL",
 	}}
 	w := &worker.Fake{
 		Caps: worker.Capabilities{TouchesLocalCheckout: true, CanAskAndWait: true, KeepsMemoryAcrossFixes: true},

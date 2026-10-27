@@ -51,15 +51,41 @@ func (s *Session) splitAskSahil(ctx context.Context, w worker.Worker, job worker
 	if err != nil {
 		return err
 	}
-	switch strings.ToLower(strings.TrimSpace(ans)) {
-	case "pass":
-		return s.bothPass(run)
-	case "fail":
-		return s.startFix(ctx, w, job, va, vb)
-	case "quit", "exit":
+	q := strings.ToLower(strings.TrimSpace(ans))
+	if q == "quit" || q == "exit" {
 		s.Council.Phase = state.PhaseAdjourn
 		return nil
-	default:
-		return s.startFix(ctx, w, job, ans, ans)
 	}
+
+	msg := fmt.Sprintf("Sahil replied:\n%s\n\nPrompt: Interpret Sahil's reply. End your response with one line:\nSAHIL_MEANS: PASS|FAIL|FIX", ans)
+	ra, rb, err := sendBoth(ctx, s.A, s.B, msg, msg)
+	if err != nil {
+		return err
+	}
+	s.say(s.A, ra)
+	s.say(s.B, rb)
+
+	ma, mb := parseSahilMeans(ra), parseSahilMeans(rb)
+	if ma == "PASS" && mb == "PASS" {
+		return s.bothPass(run)
+	}
+	if ma == "FAIL" && mb == "FAIL" {
+		return s.startFix(ctx, w, job, va, vb)
+	}
+	return s.startFix(ctx, w, job, ans, ans)
+}
+
+func parseSahilMeans(text string) string {
+	lines := strings.Split(text, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		upper := strings.ToUpper(strings.TrimSpace(lines[i]))
+		if strings.HasPrefix(upper, "SAHIL_MEANS:") {
+			val := strings.TrimSpace(upper[len("SAHIL_MEANS:"):])
+			switch val {
+			case "PASS", "FAIL", "FIX":
+				return val
+			}
+		}
+	}
+	return ""
 }
