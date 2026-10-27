@@ -1,11 +1,8 @@
 package local
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 	"unicode/utf8"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
@@ -13,63 +10,48 @@ import (
 
 func TestAgyRunnerArgvDangerouslySkipPermissions(t *testing.T) {
 	r := &AgyRunner{CLI: "agy", Model: "m", Cwd: t.TempDir()}
-	argv := r.argv(worker.Job{Text: "task", Paths: nil})
+	argv := r.argv(worker.Job{Text: "task"})
 
-	foundFlag := false
-	for i, a := range argv {
-		if a == "--dangerously-skip-permissions" {
-			foundFlag = true
-			if i >= len(argv)-2 {
-				t.Fatalf("--dangerously-skip-permissions must be before -p")
-			}
+	for _, a := range argv {
+		if strings.Contains(a, "dangerously-skip-permissions") || a == "-p" || a == "--output-format" {
+			t.Fatalf("forbidden flag found in argv: %s", a)
 		}
-	}
-	if !foundFlag {
-		t.Fatalf("argv missing --dangerously-skip-permissions: %v", argv)
 	}
 }
 
 func TestAgyRunnerDeniedActionsInReport(t *testing.T) {
-	dir := t.TempDir()
-	script := filepath.Join(dir, "fake-agy")
-	fakeJSON := `{"response":"did-work","result":{"denied_actions":[{"display_name":"RunCommand"},{"display_name":"WriteFile"}]}}`
-	scriptContent := "#!/bin/sh\necho \x27" + fakeJSON + "\x27\n"
-	if err := os.WriteFile(script, []byte(scriptContent), 0755); err != nil {
-		t.Fatal(err)
+	js := map[string]interface{}{
+		"response": "did-work",
+		"result": map[string]interface{}{
+			"denied_actions": []interface{}{
+				map[string]interface{}{"display_name": "RunCommand"},
+				map[string]interface{}{"display_name": "WriteFile"},
+			},
+		},
 	}
-	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
-	stdout, _, exit, err := r.Run(worker.Job{Text: "job"})
-	if err != nil || exit != 0 {
-		t.Fatalf("run %v exit %d", err, exit)
+	report := parseReport(js, "", "")
+	if !strings.Contains(report, "did-work") {
+		t.Fatalf("expected response in report, got %q", report)
 	}
-	if !strings.Contains(stdout, "did-work") {
-		t.Fatalf("expected response in stdout, got %q", stdout)
-	}
-	if !strings.Contains(stdout, "RunCommand") || !strings.Contains(stdout, "WriteFile") {
-		t.Fatalf("expected denied actions in stdout, got %q", stdout)
+	if !strings.Contains(report, "RunCommand") || !strings.Contains(report, "WriteFile") {
+		t.Fatalf("expected denied actions in report, got %q", report)
 	}
 }
 
 func TestAgyRunnerErrorAndStderrInReport(t *testing.T) {
-	dir := t.TempDir()
-	script := filepath.Join(dir, "fake-agy")
-	scriptContent := "#!/bin/sh\necho \x27error details on stderr\x27 >&2\necho \x27{\"status\":\"ERROR\",\"error\":\"agent failure message\"}\x27\n"
-	if err := os.WriteFile(script, []byte(scriptContent), 0755); err != nil {
-		t.Fatal(err)
+	js := map[string]interface{}{
+		"status": "ERROR",
+		"error":  "agent failure message",
 	}
-	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
-	stdout, _, _, err := r.Run(worker.Job{Text: "job"})
-	if err != nil {
-		t.Fatalf("unexpected run err: %v", err)
+	report := parseReport(js, "", "error details on stderr")
+	if !strings.Contains(report, "agent failure message") {
+		t.Fatalf("expected JSON error in report, got %q", report)
 	}
-	if !strings.Contains(stdout, "agent failure message") {
-		t.Fatalf("expected JSON error in report, got %q", stdout)
+	if !strings.Contains(report, "error details on stderr") {
+		t.Fatalf("expected stderr in report, got %q", report)
 	}
-	if !strings.Contains(stdout, "error details on stderr") {
-		t.Fatalf("expected stderr in report, got %q", stdout)
-	}
-	if !strings.Contains(stdout, "status: ERROR") {
-		t.Fatalf("expected status: ERROR in report, got %q", stdout)
+	if !strings.Contains(report, "status: ERROR") {
+		t.Fatalf("expected status: ERROR in report, got %q", report)
 	}
 }
 

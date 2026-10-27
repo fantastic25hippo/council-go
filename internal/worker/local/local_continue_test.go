@@ -31,7 +31,13 @@ func TestWorker_Continue(t *testing.T) {
 func TestWorker_Continue_WithConvID(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "fake-agy")
-	content := "#!/bin/sh\neval echo \"\\$$#\"\n"
+	jobDir := filepath.Join(dir, "job-continue")
+	content := "#!/bin/sh\n" +
+		"mkdir -p " + jobDir + "\n" +
+		"echo \"job: " + jobDir + "\"\n" +
+		"cat << 'EOF' > " + filepath.Join(jobDir, "report.json") + "\n" +
+		"{\"status\":\"ok\",\"final_summary\":\"just the answer\"}\n" +
+		"EOF\n"
 	if err := os.WriteFile(script, []byte(content), 0755); err != nil {
 		t.Fatal(err)
 	}

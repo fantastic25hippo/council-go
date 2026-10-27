@@ -2,11 +2,14 @@ package local
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,28 +22,48 @@ import (
 // ErrTimeout is returned when the local process exceeds Timeout.
 var ErrTimeout = fmt.Errorf("worker timed out")
 
-// AgyRunner runs one-shot `agy -p` jobs. -p is last.
+// AgyRunner runs one-shot grok-agy-run job commands.
 type AgyRunner struct {
-	CLI     string
-	Model   string
-	Effort  string
-	Cwd     string
-	Timeout time.Duration
-	ConvID  string
-	mu       sync.Mutex
-	cmd      *exec.Cmd
-	canceled bool
+	CLI         string
+	Model       string
+	Effort      string
+	Cwd         string
+	Timeout     time.Duration
+	ConvID      string
+	lastSummary string
+	mu          sync.Mutex
+	cmd         *exec.Cmd
+	canceled    bool
 }
 
 func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
-	argv := r.argv(job)
+	f, err := os.CreateTemp("", "council-prompt-*.txt")
+	if err != nil {
+		return "", "", 1, err
+	}
+	promptPath := f.Name()
+	defer os.Remove(promptPath)
+
+	promptText := job.Text
+	r.mu.Lock()
+	if r.lastSummary != "" {
+		promptText = r.lastSummary + "\n\n" + job.Text
+	}
+	r.mu.Unlock()
+
+	if _, err := f.WriteString(promptText); err != nil {
+		_ = f.Close()
+		return "", "", 1, err
+	}
+	_ = f.Close()
+
+	argv := r.argv(job, promptPath)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = r.Cwd
 	cmd.Env = config.StripForbidden(os.Environ())
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Start(); err != nil {
 		return "", "", 1, err
 	}
@@ -70,20 +93,43 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 			}
 		}
 
-		outText := stdout.String()
-		var js map[string]interface{}
-		if json.Unmarshal([]byte(outText), &js) == nil {
-			if cid, ok := js["conversation_id"].(string); ok && cid != "" {
-				r.ConvID = cid
-			} else if res, ok := js["result"].(map[string]interface{}); ok {
-				if cid, ok := res["conversation_id"].(string); ok && cid != "" {
-					r.ConvID = cid
-				}
+		jobDir := ""
+		for _, line := range strings.Split(stdout.String(), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "job: ") {
+				jobDir = strings.TrimSpace(strings.TrimPrefix(line, "job: "))
+				break
 			}
-			outText = parseReport(js, outText, stderr.String())
+		}
+		if jobDir == "" {
+			if err != nil {
+				return stdout.String(), stderr.String(), exit, err
+			}
+			return stdout.String(), stderr.String(), 1, fmt.Errorf("missing job: line in output")
 		}
 
-		return outText, stderr.String(), exit, nil
+		reportPath := filepath.Join(jobDir, "report.json")
+		data, rErr := os.ReadFile(reportPath)
+		if rErr != nil {
+			return stdout.String(), stderr.String(), 1, fmt.Errorf("reading report.json: %w", rErr)
+		}
+		var rep struct {
+			Status       string `json:"status"`
+			FinalSummary string `json:"final_summary"`
+		}
+		if err := json.Unmarshal(data, &rep); err != nil {
+			return stdout.String(), stderr.String(), 1, fmt.Errorf("parsing report.json: %w", err)
+		}
+		if rep.Status != "ok" {
+			if exit == 0 {
+				exit = 1
+			}
+			return rep.FinalSummary, stderr.String(), exit, fmt.Errorf("job failed with status %q", rep.Status)
+		}
+		r.mu.Lock()
+		r.lastSummary = rep.FinalSummary
+		r.mu.Unlock()
+		return rep.FinalSummary, stderr.String(), exit, nil
 	case <-timer.C:
 		_ = proc.Kill(cmd)
 		<-done
@@ -112,56 +158,42 @@ func (r *AgyRunner) IsCanceled() bool {
 	return r.canceled
 }
 
-func (r *AgyRunner) argv(job worker.Job) []string {
+func (r *AgyRunner) argv(_ worker.Job, promptFile ...string) []string {
 	cli := r.CLI
 	if cli == "" {
-		cli = "agy"
+		cli = "grok-agy-run"
 	}
-	argv := []string{cli}
+	pf := ""
+	if len(promptFile) > 0 {
+		pf = promptFile[0]
+	}
+	effort := r.Effort
+	if effort == "" {
+		effort = "medium"
+	}
+	timeout := r.Timeout
+	if timeout <= 0 {
+		timeout = 600 * time.Second
+	}
+	argv := []string{
+		cli, "job",
+		"--name", fmt.Sprintf("council-%s", shortID()),
+		"--prompt-file", pf,
+		"--workdir", r.Cwd,
+		"--tools", "code",
+		"--effort", effort,
+	}
 	if r.Model != "" {
 		argv = append(argv, "--model", r.Model)
 	}
-	if r.Effort != "" {
-		argv = append(argv, "--effort", r.Effort)
-	}
-	for _, d := range addDirs(r.Cwd, job.Paths) {
-		argv = append(argv, "--add-dir", d)
-	}
-	if r.ConvID != "" {
-		argv = append(argv, "--conversation", r.ConvID)
-	}
-	argv = append(argv, "--dangerously-skip-permissions")
-	argv = append(argv, "--output-format", "json")
-	argv = append(argv, "-p", job.Text)
+	argv = append(argv, "--wait-secs", fmt.Sprintf("%d", int(timeout.Seconds())))
 	return argv
 }
 
-func addDirs(cwd string, paths []string) []string {
-	var dirs []string
-	seen := map[string]bool{}
-	add := func(d string) {
-		if seen[d] {
-			return
-		}
-		seen[d] = true
-		dirs = append(dirs, d)
+func shortID() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%08x", time.Now().UnixNano()&0xffffffff)
 	}
-	for _, p := range paths {
-		abs := p
-		if !filepath.IsAbs(p) {
-			abs = filepath.Join(cwd, p)
-		}
-		fi, err := os.Stat(abs)
-		if err != nil {
-			continue
-		}
-		if !fi.IsDir() {
-			abs = filepath.Dir(abs)
-		}
-		add(abs)
-	}
-	if len(dirs) == 0 && cwd != "" {
-		add(cwd)
-	}
-	return dirs
+	return hex.EncodeToString(b)
 }

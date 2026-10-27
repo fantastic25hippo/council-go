@@ -1,119 +1,179 @@
 package local
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
 
-func TestAgyRunnerRun(t *testing.T) {
-	dir := t.TempDir()
-	script := filepath.Join(dir, "fake-agy")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\necho did-the-work\n"), 0755); err != nil {
-		t.Fatal(err)
+func TestAgyRunnerArgvShape(t *testing.T) {
+	r := &AgyRunner{Model: "gpt", Effort: "high", Cwd: "/workspace", Timeout: 30 * time.Second}
+	job := worker.Job{Text: "hello"}
+	argv := r.argv(job, "/tmp/prompt.txt")
+	expected := []string{
+		"grok-agy-run", "job",
+		"--prompt-file", "/tmp/prompt.txt",
+		"--workdir", "/workspace",
+		"--tools", "code",
+		"--effort", "high",
+		"--model", "gpt",
+		"--wait-secs", "30",
 	}
-	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
-	stdout, _, exit, err := r.Run(worker.Job{Text: "job"})
-	if err != nil || exit != 0 {
-		t.Fatalf("run %v exit %d", err, exit)
-	}
-	if !strings.Contains(stdout, "did-the-work") {
-		t.Fatalf("stdout %q", stdout)
-	}
-}
-
-func TestAgyRunnerArgvPutsDashPLast(t *testing.T) {
-	r := &AgyRunner{CLI: "agy", Model: "m", Cwd: t.TempDir()}
-	argv := r.argv(worker.Job{Text: "hello", Paths: nil})
-	if len(argv) < 2 || argv[len(argv)-2] != "-p" || argv[len(argv)-1] != "hello" {
-		t.Fatalf("argv %v", argv)
-	}
-
-	// Should contain --output-format json before -p, and no --conversation
-	foundJSON := false
-	for i, a := range argv {
-		if a == "--output-format" && i+1 < len(argv) && argv[i+1] == "json" {
-			foundJSON = true
-		}
-		if a == "--conversation" {
-			t.Fatalf("did not expect --conversation when ConvID is empty")
+	for _, a := range argv {
+		if strings.Contains(a, "dangerously") || a == "-p" || a == "--output-format" || a == "--conversation" || a == "--add-dir" {
+			t.Fatalf("forbidden arg found in argv: %v", argv)
 		}
 	}
-	if !foundJSON {
-		t.Fatalf("argv missing --output-format json")
-	}
-}
-
-func TestAgyRunnerArgvWithConvID(t *testing.T) {
-	r := &AgyRunner{CLI: "agy", ConvID: "abc", Cwd: t.TempDir()}
-	argv := r.argv(worker.Job{Text: "hello", Paths: nil})
-
-	foundConv := false
+	foundName := false
 	for i, a := range argv {
-		if a == "--conversation" && i+1 < len(argv) && argv[i+1] == "abc" {
-			foundConv = true
-			if i > len(argv)-3 {
-				t.Fatalf("--conversation must be before -p")
+		if a == "--name" && i+1 < len(argv) && strings.HasPrefix(argv[i+1], "council-") {
+			foundName = true
+		}
+	}
+	if !foundName {
+		t.Fatalf("argv missing --name council-<id>: %v", argv)
+	}
+	for i := 2; i < len(expected); i += 2 {
+		val := expected[i+1]
+		found := false
+		for j, a := range argv {
+			if a == expected[i] && j+1 < len(argv) && argv[j+1] == val {
+				found = true
+				break
 			}
 		}
-	}
-	if !foundConv {
-		t.Fatalf("argv missing --conversation abc")
-	}
-}
-
-func TestAgyRunnerJSONParseTopLevel(t *testing.T) {
-	dir := t.TempDir()
-	script := filepath.Join(dir, "fake-agy")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\necho '{\"conversation_id\":\"c1\",\"response\":\"did-the-work\"}'\n"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
-	stdout, _, exit, err := r.Run(worker.Job{Text: "job"})
-	if err != nil || exit != 0 {
-		t.Fatalf("run %v exit %d", err, exit)
-	}
-	if stdout != "did-the-work" {
-		t.Fatalf("expected stdout 'did-the-work', got %q", stdout)
-	}
-	if r.ConvID != "c1" {
-		t.Fatalf("expected ConvID 'c1', got %q", r.ConvID)
+		if !found {
+			t.Fatalf("argv missing %s %s: %v", expected[i], val, argv)
+		}
 	}
 }
 
-func TestAgyRunnerJSONParseNestedResult(t *testing.T) {
+func TestAgyRunnerFakeScript(t *testing.T) {
 	dir := t.TempDir()
-	script := filepath.Join(dir, "fake-agy")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\necho '{\"result\":{\"conversation_id\":\"c2\",\"response\":\"ok\"}}'\n"), 0755); err != nil {
+	script := filepath.Join(dir, "fake-grok-agy-run")
+	jobDir := filepath.Join(dir, "job-1")
+	sh := fmt.Sprintf(`#!/bin/sh
+mkdir -p %q
+echo "job: %s"
+cat > %q << 'EOF'
+{"status": "ok", "final_summary": "done first"}
+EOF
+echo "$@" > %q
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--prompt-file" ]; then
+    cat "$2" > %q
+    echo "$2" > %q
+    shift 2
+  else
+    shift
+  fi
+done
+`, jobDir, jobDir, filepath.Join(jobDir, "report.json"), filepath.Join(dir, "argv.txt"), filepath.Join(dir, "prompt.txt"), filepath.Join(dir, "prompt_path.txt"))
+	if err := os.WriteFile(script, []byte(sh), 0755); err != nil {
 		t.Fatal(err)
 	}
 	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
-	stdout, _, exit, err := r.Run(worker.Job{Text: "job"})
-	if err != nil || exit != 0 {
-		t.Fatalf("run %v exit %d", err, exit)
+	summary, _, exit, err := r.Run(worker.Job{Text: "first run"})
+	if err != nil || exit != 0 || summary != "done first" {
+		t.Fatalf("Run err=%v exit=%d summary=%q", err, exit, summary)
 	}
-	if stdout != "ok" {
-		t.Fatalf("expected stdout 'ok', got %q", stdout)
+	recordedArgv, _ := os.ReadFile(filepath.Join(dir, "argv.txt"))
+	for _, tok := range strings.Fields(string(recordedArgv)) {
+		if strings.Contains(tok, "dangerously") || tok == "-p" || tok == "--output-format" || tok == "--conversation" || tok == "--add-dir" {
+			t.Fatalf("forbidden arg recorded in argv: %s (token %q)", recordedArgv, tok)
+		}
 	}
-	if r.ConvID != "c2" {
-		t.Fatalf("expected ConvID 'c2', got %q", r.ConvID)
+	recordedPrompt, _ := os.ReadFile(filepath.Join(dir, "prompt.txt"))
+	if strings.TrimSpace(string(recordedPrompt)) != "first run" {
+		t.Fatalf("prompt file content %q", string(recordedPrompt))
+	}
+	recordedPath, _ := os.ReadFile(filepath.Join(dir, "prompt_path.txt"))
+	if _, err := os.Stat(strings.TrimSpace(string(recordedPath))); !os.IsNotExist(err) {
+		t.Fatalf("prompt file was not deleted after Run: %v", err)
+	}
+
+	// Continue test: later Run's prompt file starts with previous final_summary
+	_, _, _, err = r.Run(worker.Job{Text: "second run"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordedPrompt2, _ := os.ReadFile(filepath.Join(dir, "prompt.txt"))
+	if !strings.HasPrefix(string(recordedPrompt2), "done first\n\nsecond run") {
+		t.Fatalf("continue prompt should start with previous final_summary, got: %q", string(recordedPrompt2))
+	}
+}
+
+func TestAgyRunnerFakeScriptFailedStatus(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "fake-grok-agy-run")
+	jobDir := filepath.Join(dir, "job-fail")
+	sh := fmt.Sprintf(`#!/bin/sh
+mkdir -p %q
+echo "job: %s"
+cat > %q << 'EOF'
+{"status": "failed", "final_summary": "agent failure"}
+EOF
+`, jobDir, jobDir, filepath.Join(jobDir, "report.json"))
+	if err := os.WriteFile(script, []byte(sh), 0755); err != nil {
+		t.Fatal(err)
+	}
+	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
+	summary, _, _, err := r.Run(worker.Job{Text: "job"})
+	if err == nil {
+		t.Fatalf("expected error on status != ok")
+	}
+	if summary != "agent failure" {
+		t.Fatalf("expected summary 'agent failure', got %q", summary)
+	}
+}
+
+func TestAgyRunnerMissingJobLine(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "fake-grok-agy-run")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\necho no-job-line\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 5 * time.Second}
+	_, _, _, err := r.Run(worker.Job{Text: "job"})
+	if err == nil {
+		t.Fatalf("expected error on missing job: line")
 	}
 }
 
 func TestAgyRunnerTimeout(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "sleep-agy")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nsleep 30\n"), 0755); err != nil {
+	pgidFile := filepath.Join(dir, "pgid.txt")
+	sh := fmt.Sprintf(`#!/bin/sh
+ps -o pgid= -p $$ > %q
+sleep 30 &
+wait
+`, pgidFile)
+	if err := os.WriteFile(script, []byte(sh), 0755); err != nil {
 		t.Fatal(err)
 	}
 	r := &AgyRunner{CLI: script, Cwd: dir, Timeout: 200 * time.Millisecond}
 	_, _, _, err := r.Run(worker.Job{Text: "job"})
 	if err != ErrTimeout {
 		t.Fatalf("want ErrTimeout, got %v", err)
+	}
+	data, err := os.ReadFile(pgidFile)
+	if err != nil {
+		t.Fatalf("reading pgid file: %v", err)
+	}
+	var pgid int
+	if _, err := fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &pgid); err != nil {
+		t.Fatalf("parsing pgid %q: %v", string(data), err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if err := syscall.Kill(-pgid, 0); err == nil {
+		t.Fatalf("process group %d still exists after timeout", pgid)
 	}
 }
 
@@ -122,35 +182,6 @@ func TestWorkerStartTimeoutOutcome(t *testing.T) {
 	run := w.Start(worker.Job{})
 	if run.Outcome != worker.OutcomeTimedOut {
 		t.Fatalf("outcome %v", run.Outcome)
-	}
-}
-
-func TestAgyRunnerArgvFilePaths(t *testing.T) {
-	dir := t.TempDir()
-	subdir := filepath.Join(dir, "sub")
-	if err := os.MkdirAll(subdir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	filePath := filepath.Join(subdir, "file.go")
-	if err := os.WriteFile(filePath, []byte("// test"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	docsDir := filepath.Join(dir, "docs")
-	if err := os.MkdirAll(docsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	r := &AgyRunner{CLI: "agy", Cwd: dir}
-	argv := r.argv(worker.Job{Text: "hello", Paths: []string{"sub/file.go", "docs"}})
-
-	foundSub := false
-	for i, a := range argv {
-		if a == "--add-dir" && i+1 < len(argv) && argv[i+1] == subdir {
-			foundSub = true
-		}
-	}
-	if !foundSub {
-		t.Fatalf("argv missing --add-dir for file parent dir %q in %v", subdir, argv)
 	}
 }
 
