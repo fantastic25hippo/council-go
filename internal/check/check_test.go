@@ -111,3 +111,38 @@ func TestReadmeLinksHowToUse(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNoDangerouslySkipPermissionsOutsideMember(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := ModuleRoot(wd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const flag = "--dangerously-skip-permissions"
+	err = filepath.WalkDir(filepath.Join(root, "internal"), func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && d.Name() == "member" {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_test.go") {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(body), flag) {
+			rel, _ := filepath.Rel(root, path)
+			t.Errorf("%s has %s; use grok-agy-run job as the fix", rel, flag)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

@@ -16,6 +16,8 @@ Show fields `WORKER`, `REPO`, `OWNED_PATHS`, `CHANGE`, `VERIFY`, `AGREED`. `VERI
 # Workers
 Ids `local` and `jules`. `WORKER-OVERRIDE` in the task text may be `jules`, `local`, or `auto`; distinct conflicting overrides are an error. Jules needs `REPO` as `owner/repo` and a clean pushed GitHub checkout. local gets `OWNED_PATHS` directories in this checkout. `worker = "auto"` plus a `github.com` origin resolves to jules.
 
+Local jobs run through `grok-agy-run`, enforcing the tool policy hook, tool and step limits, 96K context compaction, and a 5-job queue, so callers should bundle related work into single jobs.
+
 # Jules
 `JULES_API_KEY` from the environment or `~/.config/council/jules.env`. Council creates a session with `AUTO_CREATE_PR`, auto-approves a generated plan, and polls until `COMPLETED`, `FAILED`, or `AWAITING_USER_FEEDBACK`. Jules opens a PR and does not merge.
 
