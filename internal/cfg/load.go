@@ -76,7 +76,6 @@ func applyFile(c *Config, path string, replaceTables bool) error {
 	return sc.Err()
 }
 
-
 // LoadDir loads the config from cwd, respecting COUNCIL_CONFIG and council.local.toml.
 func LoadDir(cwd string) (Config, error) {
 	basePath := filepath.Join(cwd, "council.toml")
@@ -114,7 +113,6 @@ func Load(path string) (Config, error) {
 	return c, err
 }
 
-
 func splitKV(line string) (string, string, bool) {
 	idx := strings.Index(line, "=")
 	if idx <= 0 {
@@ -146,4 +144,3 @@ func parseArray(s string) []string {
 	}
 	return res
 }
-

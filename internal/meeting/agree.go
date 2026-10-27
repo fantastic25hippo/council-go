@@ -117,8 +117,8 @@ func (s *Session) tryAgree(ctx context.Context, first member.Member, text string
 				if pErrA == nil && pErrB == nil && plansEqual(pA, pB) {
 					s.Plan = pA
 					s.PlanText = nackA
-				s.sys("Dual AGREED.")
-				return true, secondText, nil
+					s.sys("Dual AGREED.")
+					return true, secondText, nil
 				}
 			}
 		}

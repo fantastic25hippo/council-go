@@ -110,7 +110,6 @@ func TestLaunchNACK(t *testing.T) {
 	}
 }
 
-
 func TestDebateBRejectsAPlan(t *testing.T) {
 	a := &member.Fake{Name: "grok", Shown: "Grok", Replies: []string{
 		"Hello, I am Grok.",

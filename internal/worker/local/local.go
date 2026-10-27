@@ -78,24 +78,27 @@ func (w *Worker) Start(job worker.Job) worker.Run {
 		return r
 	}
 
-	if err != nil {
-		r.Outcome = worker.OutcomeFailed
-		if err == ErrTimeout {
-			r.Outcome = worker.OutcomeTimedOut
-			r.Report = timeoutReport(elapsed, checkoutDir(job, w.runner))
-			return r
-		}
-		r.Report = err.Error()
+	if err == ErrTimeout {
+		r.Outcome = worker.OutcomeTimedOut
+		r.Report = timeoutReport(elapsed, checkoutDir(job, w.runner))
 		return r
 	}
 
 	r.Report = stdout
 
-	question, asked := worker.ParseQuestion(stdout)
-	if asked {
+	if question, asked := worker.ParseQuestion(stdout); asked {
 		r.Outcome = worker.OutcomeAsked
 		r.Question = question
-	} else if exit == 0 {
+		return r
+	}
+
+	if err != nil {
+		r.Outcome = worker.OutcomeFailed
+		r.Report = err.Error()
+		return r
+	}
+
+	if exit == 0 {
 		r.Outcome = worker.OutcomeDone
 	} else {
 		r.Outcome = worker.OutcomeFailed

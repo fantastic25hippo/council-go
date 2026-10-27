@@ -68,17 +68,17 @@ func TestStartAndKill(t *testing.T) {
 }
 
 func TestProcessGroupKillAllowed(t *testing.T) {
-    tempdir := t.TempDir()
+	tempdir := t.TempDir()
 
-    cmd, err := proc.Start([]string{"sleep", "30"}, tempdir)
-    if err != nil {
-        t.Fatalf("Start failed: %v", err)
-    }
+	cmd, err := proc.Start([]string{"sleep", "30"}, tempdir)
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
 
-    err = cmd.Process.Kill()
-    if err != nil {
-        t.Fatalf("cmd.Process.Kill failed: %v", err)
-    }
+	err = cmd.Process.Kill()
+	if err != nil {
+		t.Fatalf("cmd.Process.Kill failed: %v", err)
+	}
 
-    _ = cmd.Wait()
+	_ = cmd.Wait()
 }

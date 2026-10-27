@@ -35,75 +35,96 @@ func (t *testDoer) Do(method, path string, body []byte) (int, []byte, error) {
 
 func TestWithRetries(t *testing.T) {
 	tests := []struct {
-		name         string
-		responses    []struct{ status int; err error }
-		expectedTries int
+		name      string
+		responses []struct {
+			status int
+			err    error
+		}
+		expectedTries  int
 		expectedStatus int
-		expectedErr   bool
+		expectedErr    bool
 	}{
 		{
 			name: "Success first try",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{200, nil},
 			},
-			expectedTries: 1,
+			expectedTries:  1,
 			expectedStatus: 200,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 		{
 			name: "404 retry then success",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{404, nil},
 				{404, nil},
 				{200, nil},
 			},
-			expectedTries: 3,
+			expectedTries:  3,
 			expectedStatus: 200,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 		{
 			name: "404 max retries",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{404, nil},
 				{404, nil},
 				{404, nil},
 				{404, nil},
 			},
-			expectedTries: 4,
+			expectedTries:  4,
 			expectedStatus: 404,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 		{
 			name: "Timeout retry then success",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{0, &fakeNetError{timeout: true}},
 				{500, nil},
 				{200, nil},
 			},
-			expectedTries: 3,
+			expectedTries:  3,
 			expectedStatus: 200,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 		{
 			name: "502 max retries",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{502, nil},
 				{502, nil},
 				{502, nil},
 				{502, nil},
 			},
-			expectedTries: 4,
+			expectedTries:  4,
 			expectedStatus: 502,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 		{
 			name: "Immediate fail 400",
-			responses: []struct{ status int; err error }{
+			responses: []struct {
+				status int
+				err    error
+			}{
 				{400, nil},
 			},
-			expectedTries: 1,
+			expectedTries:  1,
 			expectedStatus: 400,
-			expectedErr: false,
+			expectedErr:    false,
 		},
 	}
 

@@ -65,42 +65,42 @@ func TestProtectedOverlap(t *testing.T) {
 
 func TestGitHubReady(t *testing.T) {
 	tests := []struct {
-		name          string
-		caps          worker.Capabilities
-		dirty         bool
-		unpushed      bool
-		wantErr       bool
+		name        string
+		caps        worker.Capabilities
+		dirty       bool
+		unpushed    bool
+		wantErr     bool
 		errContains string
 	}{
 		{
-			name:          "ReachesGitHub true + dirty true",
-			caps:          worker.Capabilities{ReachesGitHub: true},
-			dirty:         true,
-			unpushed:      false,
-			wantErr:       true,
+			name:        "ReachesGitHub true + dirty true",
+			caps:        worker.Capabilities{ReachesGitHub: true},
+			dirty:       true,
+			unpushed:    false,
+			wantErr:     true,
 			errContains: "dirty",
 		},
 		{
-			name:          "ReachesGitHub true + unpushed true (dirty false)",
-			caps:          worker.Capabilities{ReachesGitHub: true},
-			dirty:         false,
-			unpushed:      true,
-			wantErr:       true,
+			name:        "ReachesGitHub true + unpushed true (dirty false)",
+			caps:        worker.Capabilities{ReachesGitHub: true},
+			dirty:       false,
+			unpushed:    true,
+			wantErr:     true,
 			errContains: "unpushed",
 		},
 		{
-			name:          "ReachesGitHub false + dirty true + unpushed true",
-			caps:          worker.Capabilities{ReachesGitHub: false},
-			dirty:         true,
-			unpushed:      true,
-			wantErr:       false,
+			name:     "ReachesGitHub false + dirty true + unpushed true",
+			caps:     worker.Capabilities{ReachesGitHub: false},
+			dirty:    true,
+			unpushed: true,
+			wantErr:  false,
 		},
 		{
-			name:          "ReachesGitHub true + both false",
-			caps:          worker.Capabilities{ReachesGitHub: true},
-			dirty:         false,
-			unpushed:      false,
-			wantErr:       false,
+			name:     "ReachesGitHub true + both false",
+			caps:     worker.Capabilities{ReachesGitHub: true},
+			dirty:    false,
+			unpushed: false,
+			wantErr:  false,
 		},
 	}
 

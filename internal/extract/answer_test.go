@@ -4,9 +4,9 @@ import "testing"
 
 func TestParseAnswer(t *testing.T) {
 	tests := []struct {
-		input   string
-		want    string
-		wantOK  bool
+		input  string
+		want   string
+		wantOK bool
 	}{
 		{
 			input:  "ANSWER: yes",

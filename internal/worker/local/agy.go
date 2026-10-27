@@ -34,6 +34,7 @@ type AgyRunner struct {
 	mu          sync.Mutex
 	cmd         *exec.Cmd
 	canceled    bool
+	afterStart  func()
 }
 
 func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
@@ -41,43 +42,41 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 	if err != nil {
 		return "", "", 1, err
 	}
-	promptPath := f.Name()
-	defer os.Remove(promptPath)
+	defer os.Remove(f.Name())
 
 	promptText := job.Text
 	r.mu.Lock()
 	if r.lastSummary != "" {
 		promptText = r.lastSummary + "\n\n" + job.Text
 	}
+	r.canceled = false
 	r.mu.Unlock()
 
-	if _, err := f.WriteString(promptText); err != nil {
-		_ = f.Close()
-		return "", "", 1, err
-	}
+	_, wErr := f.WriteString(promptText)
 	_ = f.Close()
+	if wErr != nil {
+		return "", "", 1, wErr
+	}
 
-	argv := r.argv(job, promptPath)
-	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Dir = r.Cwd
-	cmd.Env = config.StripForbidden(os.Environ())
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	argv := r.argv(job, f.Name())
 	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd.Dir, cmd.Env = r.Cwd, config.StripForbidden(os.Environ())
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Start(); err != nil {
 		return "", "", 1, err
 	}
-	r.mu.Lock()
-	r.cmd = cmd
-	r.canceled = false
-	r.mu.Unlock()
+	if r.afterStart != nil {
+		r.afterStart()
+	}
+	if !r.attachCmd(cmd) {
+		_ = cmd.Wait()
+		return stdout.String(), stderr.String(), 1, fmt.Errorf("canceled")
+	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	timeout := r.Timeout
-	if timeout <= 0 {
-		timeout = 600 * time.Second
-	}
-	timer := time.NewTimer(timeout)
+	timer := time.NewTimer(r.timeout())
 	defer timer.Stop()
 	select {
 	case err := <-done:
@@ -85,19 +84,16 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 		r.cmd = nil
 		r.mu.Unlock()
 		exit := 0
-		if err != nil {
-			if ee, ok := err.(*exec.ExitError); ok {
-				exit = ee.ExitCode()
-			} else {
-				return stdout.String(), stderr.String(), 1, err
-			}
+		if ee, ok := err.(*exec.ExitError); ok {
+			exit = ee.ExitCode()
+		} else if err != nil {
+			return stdout.String(), stderr.String(), 1, err
 		}
 
 		jobDir := ""
 		for _, line := range strings.Split(stdout.String(), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "job: ") {
-				jobDir = strings.TrimSpace(strings.TrimPrefix(line, "job: "))
+			if strings.HasPrefix(strings.TrimSpace(line), "job: ") {
+				jobDir = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "job: "))
 				break
 			}
 		}
@@ -108,8 +104,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 			return stdout.String(), stderr.String(), 1, fmt.Errorf("missing job: line in output")
 		}
 
-		reportPath := filepath.Join(jobDir, "report.json")
-		data, rErr := os.ReadFile(reportPath)
+		data, rErr := os.ReadFile(filepath.Join(jobDir, "report.json"))
 		if rErr != nil {
 			return stdout.String(), stderr.String(), 1, fmt.Errorf("reading report.json: %w", rErr)
 		}
@@ -140,15 +135,14 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 	}
 }
 
-func (r *AgyRunner) Cancel() error {
+func (r *AgyRunner) Cancel() (err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.canceled = true
-	if r.cmd == nil {
-		return nil
+	if r.cmd != nil {
+		err = proc.Kill(r.cmd)
+		r.cmd = nil
 	}
-	err := proc.Kill(r.cmd)
-	r.cmd = nil
 	return err
 }
 
@@ -158,42 +152,47 @@ func (r *AgyRunner) IsCanceled() bool {
 	return r.canceled
 }
 
+func (r *AgyRunner) attachCmd(cmd *exec.Cmd) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.canceled {
+		_ = proc.Kill(cmd)
+		return false
+	}
+	r.cmd = cmd
+	return true
+}
+
+func (r *AgyRunner) timeout() time.Duration {
+	if r.Timeout > 0 {
+		return r.Timeout
+	}
+	return 600 * time.Second
+}
+
 func (r *AgyRunner) argv(_ worker.Job, promptFile ...string) []string {
-	cli := r.CLI
+	cli, pf, effort := r.CLI, "", r.Effort
 	if cli == "" {
 		cli = "grok-agy-run"
 	}
-	pf := ""
 	if len(promptFile) > 0 {
 		pf = promptFile[0]
 	}
-	effort := r.Effort
 	if effort == "" {
 		effort = "medium"
 	}
-	timeout := r.Timeout
-	if timeout <= 0 {
-		timeout = 600 * time.Second
-	}
 	argv := []string{
-		cli, "job",
-		"--name", fmt.Sprintf("council-%s", shortID()),
-		"--prompt-file", pf,
-		"--workdir", r.Cwd,
-		"--tools", "code",
-		"--effort", effort,
+		cli, "job", "--name", fmt.Sprintf("council-%s", shortID()),
+		"--prompt-file", pf, "--workdir", r.Cwd, "--tools", "code", "--effort", effort,
 	}
 	if r.Model != "" {
 		argv = append(argv, "--model", r.Model)
 	}
-	argv = append(argv, "--wait-secs", fmt.Sprintf("%d", int(timeout.Seconds())))
-	return argv
+	return append(argv, "--wait-secs", fmt.Sprintf("%d", int(r.timeout().Seconds())))
 }
 
 func shortID() string {
 	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		return fmt.Sprintf("%08x", time.Now().UnixNano()&0xffffffff)
-	}
+	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }

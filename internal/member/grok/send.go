@@ -118,7 +118,6 @@ func (m *Member) call(method string, params any) (map[string]any, error) {
 	}
 }
 
-
 func chunkText(u map[string]any) string {
 	if c, ok := u["content"].(map[string]any); ok {
 		if t, ok := c["text"].(string); ok {

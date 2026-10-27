@@ -1,5 +1,13 @@
 package evidence
-import ( "os"; "os/exec"; "path/filepath"; "strings"; "testing" )
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
 func TestLocalDiff_StagedChange(t *testing.T) {
 	dir := setupGitRepo(t)
 	_ = os.Mkdir(filepath.Join(dir, "owned"), 0755)
@@ -10,6 +18,10 @@ func TestLocalDiff_StagedChange(t *testing.T) {
 	_ = os.WriteFile(p, []byte("staged-new\n"), 0644)
 	_ = exec.Command("git", "-C", dir, "add", "owned/file.txt").Run()
 	diff, err := LocalDiff(dir, []string{"owned"})
-	if err != nil { t.Fatal(err) }
-	if !strings.Contains(diff, "staged-new") { t.Fatalf("missing staged-new: %q", diff) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(diff, "staged-new") {
+		t.Fatalf("missing staged-new: %q", diff)
+	}
 }
