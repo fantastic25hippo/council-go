@@ -33,6 +33,11 @@ func TestCheckSyntax(t *testing.T) {
 			cmd:     "echo '",
 			wantErr: "VERIFY",
 		},
+		{
+			name:    "command starting with hyphen",
+			cmd:     "-s",
+			wantErr: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -131,13 +136,19 @@ func TestWrap(t *testing.T) {
 			name:        "normal command",
 			cmd:         "python3 -m unittest discover",
 			timeoutSecs: 60,
-			want:        []string{"timeout", "60", "bash", "-lc", "python3 -m unittest discover"},
+			want:        []string{"timeout", "60", "bash", "-lc", "--", "python3 -m unittest discover"},
 		},
 		{
 			name:        "double timeout command",
 			cmd:         "timeout 60 ls",
 			timeoutSecs: 180,
-			want:        []string{"timeout", "180", "bash", "-lc", "timeout 60 ls"},
+			want:        []string{"timeout", "180", "bash", "-lc", "--", "timeout 60 ls"},
+		},
+		{
+			name:        "command starting with hyphen",
+			cmd:         "-s",
+			timeoutSecs: 60,
+			want:        []string{"timeout", "60", "bash", "-lc", "--", "-s"},
 		},
 		{
 			name:        "timeoutSecs 0",
