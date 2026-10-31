@@ -17,11 +17,12 @@ func (c *Client) Activities(id string) (actSummary, error) {
 		return actSummary{}, fmt.Errorf("empty session id")
 	}
 	var sum actSummary
+	basePath := "/sessions/" + id + "/activities?pageSize=100"
 	token := ""
 	for page := 0; page < 20; page++ {
-		path := "/sessions/" + id + "/activities?pageSize=100"
+		path := basePath
 		if token != "" {
-			path += "&pageToken=" + url.QueryEscape(token)
+			path = basePath + "&pageToken=" + url.QueryEscape(token)
 		}
 		status, respBody, err := c.API.Do("GET", path, nil)
 		if err != nil {
