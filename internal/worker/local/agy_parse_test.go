@@ -69,3 +69,32 @@ func TestParseReportTruncatesStderrValidUTF8(t *testing.T) {
 		t.Fatalf("expected truncated stderr %q, got %q", suffix, out)
 	}
 }
+
+func TestParseReportResponseFallbacks(t *testing.T) {
+	js := map[string]interface{}{
+		"result": "fallback-result-str",
+	}
+	report := parseReport(js, "stdout-fallback", "")
+	if report != "fallback-result-str" {
+		t.Fatalf("expected fallback result string, got %q", report)
+	}
+
+	jsEmpty := map[string]interface{}{}
+	reportEmpty := parseReport(jsEmpty, "stdout-fallback", "")
+	if reportEmpty != "stdout-fallback" {
+		t.Fatalf("expected raw stdout fallback, got %q", reportEmpty)
+	}
+}
+
+func TestParseReportDeniedActionsFormats(t *testing.T) {
+	js := map[string]interface{}{
+		"denied_actions": []interface{}{
+			map[string]interface{}{"name": "FallbackActionName"},
+			"RawStringAction",
+		},
+	}
+	report := parseReport(js, "", "")
+	if !strings.Contains(report, "FallbackActionName") || !strings.Contains(report, "RawStringAction") {
+		t.Fatalf("expected denied actions in report, got %q", report)
+	}
+}
