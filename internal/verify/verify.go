@@ -55,7 +55,7 @@ func Run(dir, cmd string, timeoutSecs int) (output string, exit int, err error) 
 
 // Wrap returns argv that runs cmd under GNU timeout, once.
 // timeoutSecs must be > 0. cmd is passed to bash -lc unchanged.
-// Result is exactly: timeout <secs> bash -lc <cmd>
+// Result is exactly: timeout <secs> bash -lc -- <cmd>
 func Wrap(cmd string, timeoutSecs int) ([]string, error) {
 	if timeoutSecs <= 0 {
 		return nil, errors.New("timeout must be > 0")
@@ -70,6 +70,7 @@ func Wrap(cmd string, timeoutSecs int) ([]string, error) {
 		fmt.Sprintf("%d", timeoutSecs),
 		"bash",
 		"-lc",
+		"--",
 		cmd,
 	}, nil
 }
