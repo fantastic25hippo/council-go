@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/fantastic25hippo/council-go/internal/worker"
 )
@@ -44,26 +45,17 @@ func LocalDiff(dir string, owned []string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("git ls-files error: %w", err)
 	}
-	var untrackedDiff strings.Builder
+	var files []string
 	for _, file := range strings.Split(strings.TrimSpace(lsOut), "\n") {
-		if file == "" {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(dir, file))
-		if err != nil {
-			return "", fmt.Errorf("failed to read untracked file %s: %w", file, err)
-		}
-		untrackedDiff.WriteString(fmt.Sprintf("--- /dev/null\n+++ b/%s\n", file))
-		if bytes.IndexByte(content, 0) >= 0 {
-			untrackedDiff.WriteString(fmt.Sprintf("binary file omitted, %d bytes\n", len(content)))
-			continue
-		}
-		untrackedDiff.Write(content)
-		if len(content) > 0 && content[len(content)-1] != '\n' {
-			untrackedDiff.WriteString("\n\\ No newline at end of file\n")
+		if file != "" {
+			files = append(files, file)
 		}
 	}
-	out := diffOutput + untrackedDiff.String()
+	untrackedDiff, err := buildUntrackedDiff(dir, files)
+	if err != nil {
+		return "", err
+	}
+	out := diffOutput + untrackedDiff
 	if sec := outsideSection(dir, owned); sec != "" {
 		if out != "" && !strings.HasSuffix(out, "\n") {
 			out += "\n"
@@ -130,6 +122,54 @@ func outsideSection(dir string, owned []string) string {
 		b.WriteByte('\n')
 	}
 	return b.String()
+}
+
+func formatUntrackedFile(dir, file string) (string, error) {
+	content, err := os.ReadFile(filepath.Join(dir, file))
+	if err != nil {
+		return "", fmt.Errorf("failed to read untracked file %s: %w", file, err)
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("--- /dev/null\n+++ b/%s\n", file))
+	if bytes.IndexByte(content, 0) >= 0 {
+		b.WriteString(fmt.Sprintf("binary file omitted, %d bytes\n", len(content)))
+		return b.String(), nil
+	}
+	b.Write(content)
+	if len(content) > 0 && content[len(content)-1] != '\n' {
+		b.WriteString("\n\\ No newline at end of file\n")
+	}
+	return b.String(), nil
+}
+
+func buildUntrackedDiff(dir string, files []string) (string, error) {
+	if len(files) == 0 {
+		return "", nil
+	}
+	if len(files) == 1 {
+		return formatUntrackedFile(dir, files[0])
+	}
+	chunks := make([]string, len(files))
+	errs := make([]error, len(files))
+	var wg sync.WaitGroup
+	wg.Add(len(files))
+	for i, file := range files {
+		go func(idx int, fn string) {
+			defer wg.Done()
+			chunks[idx], errs[idx] = formatUntrackedFile(dir, fn)
+		}(i, file)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return "", err
+		}
+	}
+	var b strings.Builder
+	for _, chunk := range chunks {
+		b.WriteString(chunk)
+	}
+	return b.String(), nil
 }
 
 // Bundle fills worker.Evidence. It does not run git or tests itself.
