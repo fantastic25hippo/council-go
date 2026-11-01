@@ -114,9 +114,13 @@ func (l *Live) poll(ctx context.Context) error {
 			}
 		}
 
+		var done <-chan struct{}
+		if ctx != nil {
+			done = ctx.Done()
+		}
 		select {
 		case <-time.After(interval):
-		case <-ctx.Done():
+		case <-done:
 			return context.Canceled
 		}
 	}
