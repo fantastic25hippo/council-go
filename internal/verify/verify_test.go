@@ -33,6 +33,16 @@ func TestCheckSyntax(t *testing.T) {
 			cmd:     "echo '",
 			wantErr: "VERIFY",
 		},
+		{
+			name:    "flag like command",
+			cmd:     "-s",
+			wantErr: "",
+		},
+		{
+			name:    "injection payload syntax ok",
+			cmd:     "echo hi; touch /tmp/should_not_exist",
+			wantErr: "",
+		},
 	}
 
 	for _, tt := range tests {

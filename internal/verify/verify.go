@@ -10,12 +10,13 @@ import (
 	"github.com/fantastic25hippo/council-go/internal/config"
 )
 
-// CheckSyntax runs `bash -n -c cmd`. Nonzero exit is an error containing "VERIFY".
+// CheckSyntax validates cmd syntax via `bash -n`. Nonzero exit is an error containing "VERIFY".
 func CheckSyntax(cmd string) error {
 	if strings.TrimSpace(cmd) == "" {
 		return errors.New("VERIFY: cmd cannot be empty")
 	}
-	c := exec.Command("bash", "-n", "-c", cmd)
+	c := exec.Command("bash", "-n", "-s", "--")
+	c.Stdin = strings.NewReader(cmd)
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("VERIFY: syntax error: %w", err)
 	}
