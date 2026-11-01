@@ -8,33 +8,51 @@ import (
 
 func parseReport(js map[string]interface{}, rawStdout, rawStderr string) string {
 	res, _ := js["result"].(map[string]interface{})
-	getStr := func(k string) string {
-		if s, ok := js[k].(string); ok && s != "" {
-			return s
-		}
-		if res != nil {
-			if s, ok := res[k].(string); ok && s != "" {
-				return s
-			}
-		}
-		return ""
-	}
-	resp := getStr("response")
-	if resp == "" {
-		if s, ok := js["result"].(string); ok {
-			resp = s
-		}
-	}
 	var parts []string
-	if resp != "" {
+	if resp := extractResponse(js, res); resp != "" {
 		parts = append(parts, resp)
 	}
-	if strings.EqualFold(getStr("status"), "ERROR") {
+	if strings.EqualFold(getReportStr(js, res, "status"), "ERROR") {
 		parts = append(parts, "status: ERROR")
 	}
-	if errStr := getStr("error"); errStr != "" {
+	if errStr := getReportStr(js, res, "error"); errStr != "" {
 		parts = append(parts, errStr)
 	}
+	if denied := extractDeniedActions(js, res); denied != "" {
+		parts = append(parts, denied)
+	}
+	if s := truncateStderr(rawStderr); s != "" {
+		parts = append(parts, s)
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, "\n")
+	}
+	return rawStdout
+}
+
+func getReportStr(js, res map[string]interface{}, k string) string {
+	if s, ok := js[k].(string); ok && s != "" {
+		return s
+	}
+	if res != nil {
+		if s, ok := res[k].(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func extractResponse(js, res map[string]interface{}) string {
+	if resp := getReportStr(js, res, "response"); resp != "" {
+		return resp
+	}
+	if s, ok := js["result"].(string); ok {
+		return s
+	}
+	return ""
+}
+
+func extractDeniedActions(js, res map[string]interface{}) string {
 	var rawDenied []interface{}
 	if d, ok := js["denied_actions"].([]interface{}); ok {
 		rawDenied = d
@@ -55,10 +73,13 @@ func parseReport(js map[string]interface{}, rawStdout, rawStderr string) string 
 			denied = append(denied, s)
 		}
 	}
-	if len(denied) > 0 {
-		parts = append(parts, fmt.Sprintf("[council: agy denied: %s]", strings.Join(denied, ", ")))
+	if len(denied) == 0 {
+		return ""
 	}
-	errText := rawStderr
+	return fmt.Sprintf("[council: agy denied: %s]", strings.Join(denied, ", "))
+}
+
+func truncateStderr(errText string) string {
 	if len(errText) > 2048 {
 		start := len(errText) - 2048
 		for start < len(errText) && !utf8.RuneStart(errText[start]) {
@@ -66,11 +87,5 @@ func parseReport(js map[string]interface{}, rawStdout, rawStderr string) string 
 		}
 		errText = errText[start:]
 	}
-	if s := strings.TrimSpace(errText); s != "" {
-		parts = append(parts, s)
-	}
-	if len(parts) > 0 {
-		return strings.Join(parts, "\n")
-	}
-	return rawStdout
+	return strings.TrimSpace(errText)
 }
