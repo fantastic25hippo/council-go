@@ -90,6 +90,12 @@ func (m *Member) sendOnce(prompt string) (string, bool, error) {
 						default:
 						}
 					}
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
 					timer.Reset(m.timeout)
 					deltas = deltas[:0]
 					continue
