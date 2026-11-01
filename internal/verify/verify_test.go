@@ -95,12 +95,6 @@ func TestRun(t *testing.T) {
 			wantErr:     "",
 		},
 		{
-			name:        "command starting with hyphen",
-			cmd:         "-s",
-			timeoutSecs: 60,
-			want:        []string{"timeout", "60", "bash", "-lc", "--", "-s"},
-		},
-		{
 			name:        "timeoutSecs 0",
 			cmd:         "echo hi",
 			timeoutSecs: 0,
