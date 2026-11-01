@@ -55,3 +55,26 @@ func TestActivities_Error(t *testing.T) {
 		t.Fatalf("expected error containing 'boom', got %v", err)
 	}
 }
+
+type benchDoer struct {
+	calls int
+}
+
+func (b *benchDoer) Do(method, path string, body []byte) (int, []byte, error) {
+	b.calls++
+	if b.calls < 20 {
+		return 200, []byte(`{"nextPageToken":"tok-page-` + string(rune('0'+b.calls)) + `"}`), nil
+	}
+	return 200, []byte(`{}`), nil
+}
+
+func BenchmarkActivities_Pagination(b *testing.B) {
+	doer := &benchDoer{}
+	c := &Client{API: doer}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		doer.calls = 0
+		_, _ = c.Activities("session-123456789")
+	}
+}
