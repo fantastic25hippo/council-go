@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -90,13 +87,7 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 			return stdout.String(), stderr.String(), 1, err
 		}
 
-		jobDir := ""
-		for _, line := range strings.Split(stdout.String(), "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "job: ") {
-				jobDir = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "job: "))
-				break
-			}
-		}
+		jobDir := extractJobDir(stdout.String())
 		if jobDir == "" {
 			if err != nil {
 				return stdout.String(), stderr.String(), exit, err
@@ -104,27 +95,20 @@ func (r *AgyRunner) Run(job worker.Job) (string, string, int, error) {
 			return stdout.String(), stderr.String(), 1, fmt.Errorf("missing job: line in output")
 		}
 
-		data, rErr := os.ReadFile(filepath.Join(jobDir, "report.json"))
+		summary, rErr := readJobReport(jobDir)
 		if rErr != nil {
-			return stdout.String(), stderr.String(), 1, fmt.Errorf("reading report.json: %w", rErr)
-		}
-		var rep struct {
-			Status       string `json:"status"`
-			FinalSummary string `json:"final_summary"`
-		}
-		if err := json.Unmarshal(data, &rep); err != nil {
-			return stdout.String(), stderr.String(), 1, fmt.Errorf("parsing report.json: %w", err)
-		}
-		if rep.Status != "ok" {
 			if exit == 0 {
 				exit = 1
 			}
-			return rep.FinalSummary, stderr.String(), exit, fmt.Errorf("job failed with status %q", rep.Status)
+			if summary == "" {
+				summary = stdout.String()
+			}
+			return summary, stderr.String(), exit, rErr
 		}
 		r.mu.Lock()
-		r.lastSummary = rep.FinalSummary
+		r.lastSummary = summary
 		r.mu.Unlock()
-		return rep.FinalSummary, stderr.String(), exit, nil
+		return summary, stderr.String(), exit, nil
 	case <-timer.C:
 		_ = proc.Kill(cmd)
 		<-done
