@@ -35,7 +35,10 @@ func readRPC(r *bufio.Reader) (map[string]any, error) {
 			}
 		}
 		if trim == "" {
-			break
+			if n > 0 {
+				break
+			}
+			continue
 		}
 		if strings.HasPrefix(trim, "{") {
 			var m map[string]any

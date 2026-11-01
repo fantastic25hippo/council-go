@@ -39,6 +39,17 @@ func TestReadRPCBareJSONLine(t *testing.T) {
 	}
 }
 
+func TestReadRPCLeadingEmptyLine(t *testing.T) {
+	r := bufio.NewReader(strings.NewReader("\r\n\n{\"id\":4,\"result\":{}}\n"))
+	msg, err := readRPC(r)
+	if err != nil {
+		t.Fatalf("unexpected error on leading empty lines: %v", err)
+	}
+	if msg["id"] != float64(4) {
+		t.Fatalf("got id %v, want 4", msg["id"])
+	}
+}
+
 func TestReadRPCContentLength(t *testing.T) {
 	body := `{"id":3,"result":{"ok":true}}`
 	framed := "Content-Length: 29\r\n\r\n" + body
